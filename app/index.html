@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root { --accent: #ff8a3d; }
+  html, body { margin: 0; background: transparent; overflow: hidden; font-family: -apple-system, "Segoe UI", sans-serif; user-select: none; }
+  #wrap { width: 560px; height: 190px; display: flex; justify-content: center; align-items: flex-start; }
+  #pill {
+    margin-top: 2px; width: 244px; height: 42px; box-sizing: border-box;
+    background: #000; border: 1px solid #202020; border-radius: 999px;
+    display: flex; align-items: center; padding: 5px 14px 5px 5px; color: #fff;
+    transform: scale(0); opacity: 0; transform-origin: top center;
+    transition: width .35s cubic-bezier(.3,1.3,.5,1), height .35s cubic-bezier(.3,1.3,.5,1), border-radius .35s, transform .35s, opacity .25s, padding .35s;
+  }
+  #pill.show { transform: scale(1); opacity: 1; }
+  #pill { cursor: grab; }
+  #pill.dragging { cursor: grabbing; }
+  #pill.open { width: 520px; height: 154px; border-radius: 38px; padding: 14px 22px; flex-direction: column; align-items: stretch; }
+  #topline { display: flex; align-items: center; min-height: 52px; }
+  #art { width: 30px; height: 30px; border-radius: 9px; background: #222 center/cover; flex: none; transition: all .35s; }
+  #pill.open #art { width: 54px; height: 54px; border-radius: 15px; }
+  #info { flex: 1; min-width: 0; margin: 0 12px; opacity: 0; width: 0; transition: opacity .25s; }
+  #pill.open #info { opacity: 1; width: auto; }
+  #title { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #artist { font-size: 13px; color: #9a9a9a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 3px; }
+  #wave { display: flex; align-items: center; gap: 3px; height: 22px; flex: none; }
+  #wave i { display: block; width: 3px; border-radius: 3px; background: var(--accent); height: 6px; }
+  #pill.playing #wave i { animation: bar .9s ease-in-out infinite; }
+  #wave i:nth-child(1) { animation-delay: -.7s } #wave i:nth-child(2) { animation-delay: -.3s }
+  #wave i:nth-child(3) { animation-delay: -.5s } #wave i:nth-child(4) { animation-delay: -.1s }
+  #wave i:nth-child(5) { animation-delay: -.6s }
+  #close { display: none; width: 28px; height: 28px; margin-left: 12px; border: 0; border-radius: 50%; background: #242424; color: #aaa; font-size: 19px; line-height: 1; cursor: pointer; }
+  #pill.open #close { display: block; }
+  #close:hover { color: #fff; background: #444; }
+  #progress-row { display: none; align-items: center; gap: 10px; margin: 4px 1px 0; color: #a5a5a5; font-size: 11px; font-variant-numeric: tabular-nums; }
+  #pill.open #progress-row { display: flex; }
+  #progress { appearance: none; flex: 1; min-width: 0; height: 5px; border-radius: 99px; outline: none; cursor: pointer; background: linear-gradient(to right, var(--accent) var(--progress, 0%), #333 var(--progress, 0%)); }
+  #progress::-webkit-slider-thumb { appearance: none; width: 10px; height: 10px; border-radius: 50%; background: #fff; }
+  #ctrls { display: none; justify-content: center; align-items: center; gap: 28px; margin-top: 5px; }
+  #pill.open #ctrls { display: flex; }
+  #ctrls button { background: none; border: 0; color: #fff; font-size: 20px; cursor: pointer; padding: 2px 5px; }
+  #ctrls button:hover { color: var(--accent); }
+  #ctrls #pp { font-size: 23px; }
+  @keyframes bar { 0%,100% { height: 6px } 50% { height: 22px } }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="pill">
+    <div id="topline">
+      <div id="art"></div>
+      <div id="info">
+        <div id="title"></div>
+        <div id="artist"></div>
+      </div>
+      <div id="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+      <button id="close" aria-label="Close Media Island" title="Close Media Island">×</button>
+    </div>
+    <div id="progress-row">
+      <span id="elapsed">0:00</span>
+      <input id="progress" aria-label="Seek through media" type="range" min="0" max="100" value="0">
+      <span id="remaining">-0:00</span>
+    </div>
+    <div id="ctrls">
+      <button id="prev" aria-label="Previous track" title="Previous">⏮</button>
+      <button id="pp" aria-label="Play or pause" title="Play or pause">⏯</button>
+      <button id="next" aria-label="Next track" title="Next">⏭</button>
+    </div>
+  </div>
+</div>
+<script>
+  const pill = document.getElementById("pill");
+  const $ = id => document.getElementById(id);
+  let duration = 0;
+  let currentTrack = "";
+  let dismissedTrack = "";
+  let dragging = false;
+  const formatTime = seconds => {
+    const total = Number.isFinite(seconds) && seconds > 0 ? Math.floor(seconds) : 0;
+    return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+  };
+  const setAccent = color => document.documentElement.style.setProperty("--accent", color);
+
+  window.island.getAccentColor().then(setAccent);
+  window.island.onAccentColor(setAccent);
+  window.island.onState(s => {
+    if (s.type === "none") { pill.classList.remove("show", "open", "playing"); return; }
+    const track = JSON.stringify([s.title || "", s.artist || "", s.art || ""]);
+    if (track !== currentTrack) {
+      currentTrack = track;
+      if (track !== dismissedTrack) dismissedTrack = "";
+    }
+    pill.classList.toggle("show", track !== dismissedTrack);
+    pill.classList.toggle("playing", !!s.playing);
+    $("title").textContent = s.title || "";
+    $("artist").textContent = s.artist || "";
+    $("art").style.backgroundImage = s.art ? `url("${s.art}")` : "none";
+    duration = Number.isFinite(s.duration) && s.duration > 0 ? s.duration : 0;
+    const current = Number.isFinite(s.currentTime) ? s.currentTime : 0;
+    const percent = duration ? Math.min(100, Math.max(0, current / duration * 100)) : 0;
+    $("progress").max = duration || 100;
+    $("progress").value = duration ? current : 0;
+    $("progress").style.setProperty("--progress", `${percent}%`);
+    $("elapsed").textContent = formatTime(current);
+    $("remaining").textContent = `-${formatTime(Math.max(0, duration - current))}`;
+  });
+  pill.addEventListener("mouseenter", () => { window.island.interactive(true); pill.classList.add("open"); });
+  pill.addEventListener("mouseleave", () => {
+    if (!dragging) { pill.classList.remove("open"); window.island.interactive(false); }
+  });
+  pill.addEventListener("pointerdown", event => {
+    if (event.target.closest("button, input")) return;
+    dragging = true;
+    pill.classList.add("dragging");
+    pill.setPointerCapture(event.pointerId);
+    window.island.drag("start", event.screenX, event.screenY);
+  });
+  pill.addEventListener("pointermove", event => {
+    if (dragging) window.island.drag("move", event.screenX, event.screenY);
+  });
+  const endDrag = event => {
+    if (!dragging) return;
+    dragging = false;
+    pill.classList.remove("dragging");
+    window.island.drag("end", event.screenX, event.screenY);
+  };
+  pill.addEventListener("pointerup", endDrag);
+  pill.addEventListener("pointercancel", endDrag);
+  $("close").addEventListener("click", event => {
+    event.stopPropagation();
+    dismissedTrack = currentTrack;
+    pill.classList.remove("show", "open", "playing");
+    window.island.interactive(false);
+  });
+  $("pp").onclick = () => window.island.cmd("playpause");
+  $("next").onclick = () => window.island.cmd("next");
+  $("prev").onclick = () => window.island.cmd("prev");
+  $("progress").addEventListener("change", event => window.island.cmd("seek", Number(event.target.value)));
+  $("progress").addEventListener("input", event => {
+    const current = Number(event.target.value);
+    const percent = duration ? current / duration * 100 : 0;
+    event.target.style.setProperty("--progress", `${percent}%`);
+    $("elapsed").textContent = formatTime(current);
+    $("remaining").textContent = `-${formatTime(Math.max(0, duration - current))}`;
+  });
+</script>
+</body>
+</html>

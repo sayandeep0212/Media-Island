@@ -1,0 +1,24 @@
+{
+  "name": "media-island",
+  "version": "1.0.0",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:win": "electron-builder --win nsis",
+    "build:mac": "electron-builder --mac"
+  },
+  "dependencies": { "ws": "^8.18.0" },
+  "devDependencies": { "electron": "^33.0.0", "electron-builder": "^25.0.0" },
+  "build": {
+    "appId": "com.mediaisland.app",
+    "productName": "Media Island",
+    "directories": { "output": "release" },
+    "win": { "target": ["nsis"], "signAndEditExecutable": false },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Media Island",
+  "version": "1.0.0",
+  "description": "Shows what's playing in Chrome in a Dynamic Island style pill on your desktop.",
+  "permissions": ["tabs", "alarms"],
+  "host_permissions": ["http://127.0.0.1:47890/*"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ]
+}
