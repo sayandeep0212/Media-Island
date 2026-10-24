@@ -25,6 +25,15 @@ launches.
 Hover over the island to expand it. Drag the island to move it anywhere on the
 screen; click **×** to hide it until the next track starts.
 
+### If the island does not appear
+
+- Make sure Media Island is running; its icon appears in the Windows system tray.
+- Run only one copy of the desktop app. If you see an "already running" message,
+  close the existing copy from its tray menu before launching it again.
+- In Chrome, open `chrome://extensions`, verify Media Island is enabled, and load
+  the `extension` folder using **Load unpacked** if it is not installed.
+- Reload the tab playing music after enabling the extension.
+
 ## 2. Chrome extension
 1. Open chrome://extensions
 2. Turn on Developer mode

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Menu, nativeImage, screen, Tray } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, screen, Tray } = require("electron");
 const fs = require("fs");
 const path = require("path");
 const { WebSocketServer } = require("ws");
@@ -9,6 +9,10 @@ let tray;
 const clients = new Set();
 let settings = { accentColor: "#ff8a3d" };
 let dragOffset;
+
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+}
 
 function place() {
   const { bounds } = screen.getPrimaryDisplay();
@@ -80,6 +84,18 @@ function openSettings() {
 
 function startServer() {
   const wss = new WebSocketServer({ host: "127.0.0.1", port: 47890 });
+  wss.on("error", error => {
+    console.error("Media Island could not start its local media server:", error);
+    if (error.code === "EADDRINUSE") {
+      dialog.showErrorBox(
+        "Media Island is already running",
+        "Another Media Island instance is already using the media connection. Close the other instance from the system tray, then launch Media Island again."
+      );
+    } else {
+      dialog.showErrorBox("Media Island could not start", error.message);
+    }
+    app.quit();
+  });
   wss.on("connection", ws => {
     clients.add(ws);
     ws.on("message", data => {
@@ -128,11 +144,18 @@ ipcMain.handle("settings:setAccentColor", (_e, color) => {
 });
 
 app.whenReady().then(() => {
+  if (!app.hasSingleInstanceLock()) return;
   if (process.platform === "darwin") app.dock.hide();
   loadSettings();
   createTray();
   app.setLoginItemSettings({ openAtLogin: true });
   startServer();
   createWindow();
+});
+app.on("second-instance", () => {
+  if (settingsWin && !settingsWin.isDestroyed()) {
+    settingsWin.show();
+    settingsWin.focus();
+  }
 });
 app.on("window-all-closed", () => {});

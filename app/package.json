@@ -13,6 +13,7 @@
     "appId": "com.mediaisland.app",
     "productName": "Media Island",
     "directories": { "output": "release" },
+    "files": ["**/*", "!release/**", "!release-fixed/**", "!dist/**", "!builder-debug.yml"],
     "win": { "target": ["nsis"], "signAndEditExecutable": false },
     "nsis": {
       "oneClick": false,
