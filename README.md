@@ -42,3 +42,5 @@ screen; click **×** to hide it until the next track starts.
 
 Hover over the pill to expand it and use prev / play-pause / next or seek through the track.
 Next/prev work on YouTube, YouTube Music and Spotify Web; play/pause works everywhere.
+The website favicon appears as a badge over the album artwork. Native Windows app
+media sources are not currently detected.

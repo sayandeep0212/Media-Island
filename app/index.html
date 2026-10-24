@@ -16,10 +16,13 @@
   #pill.show { transform: scale(1); opacity: 1; }
   #pill { cursor: grab; }
   #pill.dragging { cursor: grabbing; }
-  #pill.open { width: 520px; height: 154px; border-radius: 38px; padding: 14px 22px; flex-direction: column; align-items: stretch; }
+  #pill.open { width: 520px; height: 154px; border-radius: 48px; padding: 14px 22px; flex-direction: column; align-items: stretch; }
   #topline { display: flex; align-items: center; min-height: 52px; }
-  #art { width: 30px; height: 30px; border-radius: 9px; background: #222 center/cover; flex: none; transition: all .35s; }
+  #art { position: relative; width: 30px; height: 30px; border-radius: 9px; background: #222 center/cover; flex: none; transition: all .35s; }
   #pill.open #art { width: 54px; height: 54px; border-radius: 15px; }
+  #source-badge { position: absolute; right: -5px; bottom: -5px; width: 17px; height: 17px; box-sizing: border-box; overflow: hidden; display: grid; place-items: center; border: 2px solid #000; border-radius: 50%; background: #333; color: #fff; font-size: 9px; font-weight: 700; }
+  #source-icon { width: 100%; height: 100%; object-fit: cover; }
+  #source-fallback { display: none; text-transform: uppercase; }
   #info { flex: 1; min-width: 0; margin: 0 12px; opacity: 0; width: 0; transition: opacity .25s; }
   #pill.open #info { opacity: 1; width: auto; }
   #title { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -49,7 +52,12 @@
 <div id="wrap">
   <div id="pill">
     <div id="topline">
-      <div id="art"></div>
+      <div id="art">
+        <span id="source-badge" title="Media source" aria-label="Media source">
+          <img id="source-icon" alt="">
+          <span id="source-fallback"></span>
+        </span>
+      </div>
       <div id="info">
         <div id="title"></div>
         <div id="artist"></div>
@@ -81,6 +89,10 @@
     return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
   };
   const setAccent = color => document.documentElement.style.setProperty("--accent", color);
+  $("source-icon").addEventListener("error", () => {
+    $("source-icon").style.display = "none";
+    $("source-fallback").style.display = "block";
+  });
 
   window.island.getAccentColor().then(setAccent);
   window.island.onAccentColor(setAccent);
@@ -96,6 +108,18 @@
     $("title").textContent = s.title || "";
     $("artist").textContent = s.artist || "";
     $("art").style.backgroundImage = s.art ? `url("${s.art}")` : "none";
+    const sourceName = s.sourceName || "Unknown source";
+    const sourceIcon = s.sourceIcon || "";
+    $("source-badge").title = sourceName;
+    $("source-badge").setAttribute("aria-label", `Playing from ${sourceName}`);
+    $("source-fallback").textContent = sourceName.charAt(0) || "?";
+    if ($("source-icon").dataset.sourceIcon !== sourceIcon) {
+      $("source-icon").dataset.sourceIcon = sourceIcon;
+      $("source-icon").style.display = sourceIcon ? "block" : "none";
+      $("source-fallback").style.display = sourceIcon ? "none" : "block";
+      if (sourceIcon) $("source-icon").src = sourceIcon;
+      else $("source-icon").removeAttribute("src");
+    }
     duration = Number.isFinite(s.duration) && s.duration > 0 ? s.duration : 0;
     const current = Number.isFinite(s.currentTime) ? s.currentTime : 0;
     const percent = duration ? Math.min(100, Math.max(0, current / duration * 100)) : 0;

@@ -4,6 +4,29 @@ let ws = null;
 
 function key(t, f) { return t + ":" + f; }
 
+function mediaSource(tab) {
+  try {
+    const pageUrl = new URL(tab.url);
+    if (pageUrl.protocol !== "http:" && pageUrl.protocol !== "https:") return {};
+    const host = pageUrl.hostname.replace(/^www\./, "");
+    const names = {
+      "music.youtube.com": "YouTube Music",
+      "youtube.com": "YouTube",
+      "youtu.be": "YouTube",
+      "open.spotify.com": "Spotify",
+      "spotify.com": "Spotify",
+      "soundcloud.com": "SoundCloud",
+      "netflix.com": "Netflix",
+      "twitch.tv": "Twitch",
+      "music.apple.com": "Apple Music"
+    };
+    const sourceName = names[host] || host;
+    return { sourceName, sourceIcon: new URL("/favicon.ico", pageUrl).href };
+  } catch {
+    return {};
+  }
+}
+
 function pick() {
   let best = null;
   for (const v of frames.values()) {
@@ -45,7 +68,10 @@ function connect() {
 chrome.runtime.onMessage.addListener((msg, sender) => {
   if (msg.type !== "state" || !sender.tab) return;
   const k = key(sender.tab.id, sender.frameId || 0);
-  if (msg.state) frames.set(k, { state: msg.state, ts: Date.now(), tabId: sender.tab.id, frameId: sender.frameId || 0 });
+  if (msg.state) {
+    const state = { ...msg.state, ...mediaSource(sender.tab) };
+    frames.set(k, { state, ts: Date.now(), tabId: sender.tab.id, frameId: sender.frameId || 0 });
+  }
   else frames.delete(k);
   connect();
   push();
