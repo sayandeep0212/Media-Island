@@ -340,7 +340,7 @@
 
   <div class="tabs">
     <button class="tab-btn active" data-tab="tab-color">Appearance</button>
-    <button class="tab-btn" data-tab="tab-remote">Phone Remote & Firebase</button>
+    <button class="tab-btn" data-tab="tab-remote">Phone Remote & Pairing</button>
   </div>
 
   <!-- Tab 1: Appearance -->
@@ -378,8 +378,8 @@
   <!-- Tab 2: Phone Remote & Firebase -->
   <div id="tab-remote" class="tab-content">
     <div class="card">
-      <div class="card-title">Scan to Control from Phone (Global & Wi-Fi)</div>
-      <div class="card-desc">Scan with your phone camera. Works anywhere in the world on 4G, 5G, or Wi-Fi!</div>
+      <div class="card-title">Scan to Link Mobile Remote (WhatsApp-Style Pairing)</div>
+      <div class="card-desc">Open the web remote on your phone and tap the camera icon to scan, or scan directly with your phone camera.</div>
 
       <div class="remote-hero">
         <div class="qr-container">
@@ -403,24 +403,19 @@
     </div>
 
     <div class="card">
-      <div class="card-title">Pairing & Firebase Cloud Sync</div>
-      <div class="card-desc">Every Media Island user gets a unique Room ID to pair and control their desktop secretly.</div>
+      <div class="card-title">Your Private Room Code</div>
+      <div class="card-desc">Every Media Island user gets a unique Room Code to pair and control their desktop secretly.</div>
 
       <div class="form-group">
         <label for="roomCodeInput">Pairing Code / Room ID</label>
         <div style="display: flex; gap: 8px;">
-          <input type="text" id="roomCodeInput" placeholder="e.g. sayan-island or island-8x29a">
-          <button id="randomizeRoomBtn" class="btn" type="button" style="white-space: nowrap; font-size: 11px;">🎲 Randomize</button>
+          <input type="text" id="roomCodeInput" placeholder="e.g. island-8x29a" style="font-family: monospace; font-size: 13px; font-weight: 600; letter-spacing: 0.5px;">
+          <button id="randomizeRoomBtn" class="btn" type="button" style="white-space: nowrap; font-size: 11px;">🎲 New Code</button>
         </div>
-        <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Share this ID or QR code with your phone to link controls.</div>
+        <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">Share this ID or scan the QR code with your phone to link controls.</div>
       </div>
 
-      <div class="form-group">
-        <label for="firebaseConfigInput">Firebase Web Config (JSON)</label>
-        <textarea id="firebaseConfigInput" placeholder='{"apiKey": "...", "databaseURL": "https://...", "projectId": "..."}'></textarea>
-      </div>
-
-      <button id="saveConfigBtn" class="btn">Save & Sync with Firebase</button>
+      <button id="saveConfigBtn" class="btn">Apply Room Code</button>
       <div id="saveStatus"></div>
     </div>
   </div>
@@ -489,9 +484,8 @@
     // Remote Configuration Handler
     function renderRemoteConfig(config) {
       if (!config) return;
-      roomCodeInput.value = config.roomCode || "sayan-island";
-      if (config.firebaseConfig) {
-        firebaseConfigInput.value = JSON.stringify(config.firebaseConfig, null, 2);
+      if (config.roomCode) {
+        roomCodeInput.value = config.roomCode;
       }
       if (config.qrCodeDataUrl) {
         qrImage.src = config.qrCodeDataUrl;
@@ -528,6 +522,17 @@
       if (window.island.generateRoomCode) {
         const newCode = await window.island.generateRoomCode();
         roomCodeInput.value = newCode;
+        saveStatus.textContent = "Updating room code...";
+        saveStatus.style.color = "#f59e0b";
+        try {
+          const updated = await window.island.saveRemoteConfig({ roomCode: newCode });
+          renderRemoteConfig(updated);
+          saveStatus.textContent = "New room code active! QR updated.";
+          saveStatus.style.color = "#10b981";
+        } catch (err) {
+          saveStatus.textContent = "Failed to update: " + err.message;
+          saveStatus.style.color = "#ef4444";
+        }
       }
     });
 
@@ -543,28 +548,19 @@
 
     saveConfigBtn.addEventListener("click", async () => {
       const room = roomCodeInput.value.trim();
-      const rawConfig = firebaseConfigInput.value.trim();
-      let parsed = null;
-      if (rawConfig) {
-        try {
-          parsed = JSON.parse(rawConfig);
-        } catch {
-          saveStatus.textContent = "Invalid JSON in Firebase configuration.";
-          saveStatus.style.color = "#ef4444";
-          return;
-        }
+      if (!room) {
+        saveStatus.textContent = "Please enter a valid room code.";
+        saveStatus.style.color = "#ef4444";
+        return;
       }
 
-      saveStatus.textContent = "Saving and connecting...";
+      saveStatus.textContent = "Updating room code...";
       saveStatus.style.color = "#f59e0b";
 
       try {
-        const updated = await window.island.saveRemoteConfig({
-          roomCode: room || "sayan-island",
-          firebaseConfig: parsed
-        });
+        const updated = await window.island.saveRemoteConfig({ roomCode: room });
         renderRemoteConfig(updated);
-        saveStatus.textContent = "Saved successfully! Ready to connect.";
+        saveStatus.textContent = "Room code updated! QR code refreshed.";
         saveStatus.style.color = "#10b981";
       } catch (err) {
         saveStatus.textContent = "Failed to save: " + err.message;

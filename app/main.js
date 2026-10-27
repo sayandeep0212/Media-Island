@@ -50,6 +50,17 @@ function loadEnvConfig() {
   return null;
 }
 
+const DEFAULT_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyC6cLy4w_MVXIJX3glLjIn2aWCKtqgBpzo",
+  authDomain: "media-island.firebaseapp.com",
+  projectId: "media-island",
+  databaseURL: "https://media-island-default-rtdb.firebaseio.com",
+  storageBucket: "media-island.firebasestorage.app",
+  messagingSenderId: "277961059084",
+  appId: "1:277961059084:web:6f94aa2e3d5281b053b729",
+  measurementId: "G-45J422DSZM"
+};
+
 const GLOBAL_WEB_URL = "https://media-island.web.app";
 
 function generateRoomCode() {
@@ -63,7 +74,7 @@ function generateRoomCode() {
 
 let settings = {
   accentColor: "#ff8a3d",
-  roomCode: "sayan-island",
+  roomCode: null,
   firebaseConfig: null
 };
 let dragOffset;
@@ -109,20 +120,20 @@ function loadSettings() {
     if (typeof saved.accentColor === "string" && /^#[0-9a-f]{6}$/i.test(saved.accentColor)) {
       settings.accentColor = saved.accentColor;
     }
-    if (typeof saved.roomCode === "string" && saved.roomCode.trim()) {
+    if (typeof saved.roomCode === "string" && saved.roomCode.trim() && saved.roomCode.trim() !== "sayan-island") {
       settings.roomCode = saved.roomCode.trim();
     }
     if (saved.firebaseConfig && typeof saved.firebaseConfig === "object" && saved.firebaseConfig.apiKey) {
       settings.firebaseConfig = saved.firebaseConfig;
     } else {
-      settings.firebaseConfig = loadEnvConfig();
+      settings.firebaseConfig = loadEnvConfig() || DEFAULT_FIREBASE_CONFIG;
     }
   } catch (error) {
     if (error.code !== "ENOENT") console.error("Error loading settings:", error);
-    settings.firebaseConfig = loadEnvConfig();
+    settings.firebaseConfig = loadEnvConfig() || DEFAULT_FIREBASE_CONFIG;
   }
 
-  if (!settings.roomCode) {
+  if (!settings.roomCode || settings.roomCode === "sayan-island") {
     settings.roomCode = generateRoomCode();
     saveSettings();
   }
@@ -343,16 +354,10 @@ ipcMain.handle("settings:getRemoteConfig", async () => {
   const localIp = getLocalIp();
   const localUrl = `http://${localIp}:47890/?room=${encodeURIComponent(settings.roomCode)}`;
   const globalUrl = `${GLOBAL_WEB_URL}/?room=${encodeURIComponent(settings.roomCode)}`;
-  
-  // Embed config in QR URL so scanning phone auto-configures with ZERO hardcoded keys in repository
-  const configParam = (settings.firebaseConfig && settings.firebaseConfig.apiKey)
-    ? `&cfg=${encodeURIComponent(JSON.stringify(settings.firebaseConfig))}`
-    : "";
-  const pairingQrUrl = `${GLOBAL_WEB_URL}/?room=${encodeURIComponent(settings.roomCode)}${configParam}`;
 
   let qrCodeDataUrl = "";
   try {
-    qrCodeDataUrl = await QRCode.toDataURL(pairingQrUrl, {
+    qrCodeDataUrl = await QRCode.toDataURL(globalUrl, {
       margin: 1,
       width: 160,
       color: { dark: "#000000ff", light: "#ffffffff" }
@@ -361,7 +366,6 @@ ipcMain.handle("settings:getRemoteConfig", async () => {
 
   return {
     roomCode: settings.roomCode,
-    firebaseConfig: settings.firebaseConfig,
     localUrl,
     globalUrl,
     qrCodeDataUrl,
@@ -369,11 +373,10 @@ ipcMain.handle("settings:getRemoteConfig", async () => {
   };
 });
 
-ipcMain.handle("settings:saveRemoteConfig", async (_e, { roomCode, firebaseConfig }) => {
-  if (roomCode && typeof roomCode === "string") {
+ipcMain.handle("settings:saveRemoteConfig", async (_e, { roomCode }) => {
+  if (roomCode && typeof roomCode === "string" && roomCode.trim()) {
     settings.roomCode = roomCode.trim();
   }
-  settings.firebaseConfig = firebaseConfig;
   saveSettings();
 
   firebaseSync.setup(settings.firebaseConfig, settings.roomCode);
@@ -381,14 +384,10 @@ ipcMain.handle("settings:saveRemoteConfig", async (_e, { roomCode, firebaseConfi
   const localIp = getLocalIp();
   const localUrl = `http://${localIp}:47890/?room=${encodeURIComponent(settings.roomCode)}`;
   const globalUrl = `${GLOBAL_WEB_URL}/?room=${encodeURIComponent(settings.roomCode)}`;
-  const configParam = (settings.firebaseConfig && settings.firebaseConfig.apiKey)
-    ? `&cfg=${encodeURIComponent(JSON.stringify(settings.firebaseConfig))}`
-    : "";
-  const pairingQrUrl = `${GLOBAL_WEB_URL}/?room=${encodeURIComponent(settings.roomCode)}${configParam}`;
 
   let qrCodeDataUrl = "";
   try {
-    qrCodeDataUrl = await QRCode.toDataURL(pairingQrUrl, {
+    qrCodeDataUrl = await QRCode.toDataURL(globalUrl, {
       margin: 1,
       width: 160,
       color: { dark: "#000000ff", light: "#ffffffff" }
@@ -397,7 +396,6 @@ ipcMain.handle("settings:saveRemoteConfig", async (_e, { roomCode, firebaseConfi
 
   return {
     roomCode: settings.roomCode,
-    firebaseConfig: settings.firebaseConfig,
     localUrl,
     globalUrl,
     qrCodeDataUrl,

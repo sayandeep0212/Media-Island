@@ -14,6 +14,8 @@
   <!-- Firebase Compat SDKs for universal zero-config web & mobile execution -->
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+  <!-- HTML5 QR Code Scanner for WhatsApp Web-style camera pairing -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
   <!-- Top App Header -->
@@ -36,6 +38,9 @@
         <span class="status-dot"></span>
         <span id="statusText">Connecting</span>
       </div>
+      <button id="openScannerBtn" class="icon-btn" aria-label="Scan Desktop QR Code" title="Scan Desktop QR Code">
+        📷
+      </button>
       <button id="settingsBtn" class="icon-btn" aria-label="Settings & Pairing" title="Settings & Pairing">
         ⚙️
       </button>
@@ -137,36 +142,66 @@
     <div class="footer-copyright">Copyright &copy; 2026 sayandeep0212. All rights reserved.</div>
   </footer>
 
-  <!-- Settings & Device Pairing Modal -->
+  <!-- Device Pairing Modal -->
   <div id="settingsModal" class="modal-overlay">
     <div class="modal-content">
       <div class="modal-header">
-        <h2 class="modal-title">Firebase & Device Pairing</h2>
+        <h2 class="modal-title">Pair with Desktop</h2>
         <button id="closeModalBtn" class="close-btn" aria-label="Close Settings">✕</button>
+      </div>
+
+      <button id="openScannerFromModalBtn" class="btn-primary" style="margin-top: 0; margin-bottom: 14px; background: rgba(255, 255, 255, 0.08); color: var(--text-primary); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; gap: 8px;">
+        <span style="font-size: 16px;">📷</span> Scan Desktop QR Code
+      </button>
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px; font-size: 11px; color: var(--text-muted);">
+        <span style="flex: 1; height: 1px; background: var(--border);"></span>
+        <span>OR ENTER CODE MANUALLY</span>
+        <span style="flex: 1; height: 1px; background: var(--border);"></span>
       </div>
 
       <div class="form-group">
         <label class="form-label" for="roomCodeInput">Pairing Code / Room ID</label>
-        <input type="text" id="roomCodeInput" class="form-input" placeholder="e.g. sayan-island or 123456">
-        <div class="form-hint">Enter the same pairing code shown on your Desktop Media Island Settings.</div>
+        <input type="text" id="roomCodeInput" class="form-input" placeholder="e.g. island-8x29a">
+        <div class="form-hint">Enter the Room ID displayed in your Desktop Media Island Settings or scan the QR code.</div>
       </div>
 
-      <div class="form-group">
-        <label class="form-label" for="firebaseConfigInput">Firebase Project Config (JSON)</label>
-        <textarea id="firebaseConfigInput" class="form-input form-textarea" placeholder='{"apiKey": "...", "databaseURL": "https://...", "projectId": "..."}'></textarea>
-        <div class="form-hint">Paste your Firebase web config from Firebase Console. This is saved privately on your phone.</div>
-      </div>
-
-      <button id="saveConfigBtn" class="btn-primary">Save & Connect</button>
+      <button id="saveConfigBtn" class="btn-primary">Connect to Island</button>
 
       <div class="quick-guide">
-        <strong>Quick Firebase Setup:</strong>
-        <ol>
-          <li>Open <a href="https://console.firebase.google.com" target="_blank" style="color: var(--accent);">Firebase Console</a> & create a free project.</li>
-          <li>Click <em>Build &gt; Realtime Database &gt; Create Database</em> (choose test mode).</li>
-          <li>Click <em>Project Settings ⚙️ &gt; General &gt; Add Web App</em>, copy the <code>firebaseConfig</code> object and paste it here and on Desktop.</li>
-        </ol>
+        <strong>How to Pair:</strong>
+        <p style="margin-top: 5px; font-size: 12px; color: var(--text-muted); line-height: 1.4;">
+          Open <strong>Settings & Mobile Remote</strong> on your Desktop Media Island, scan the QR code with your phone camera, or enter your Room ID above.
+        </p>
       </div>
+    </div>
+  </div>
+
+  <!-- WhatsApp Web Style In-App QR Scanner Overlay -->
+  <div id="scannerOverlay" class="scanner-overlay">
+    <div class="scanner-header">
+      <div class="scanner-title-box">
+        <span class="scanner-title">Scan QR Code</span>
+        <span class="scanner-sub">Align desktop QR code in frame to pair</span>
+      </div>
+      <button id="closeScannerBtn" class="scanner-close-btn" aria-label="Close Scanner">✕</button>
+    </div>
+
+    <div class="scanner-viewport-wrapper">
+      <div id="qrReader" class="qr-reader-container"></div>
+      
+      <!-- WhatsApp Style Viewfinder Frame & Animated Laser Line -->
+      <div class="scanner-frame" id="scannerFrame">
+        <div class="corner top-left"></div>
+        <div class="corner top-right"></div>
+        <div class="corner bottom-left"></div>
+        <div class="corner bottom-right"></div>
+        <div class="scanner-laser"></div>
+      </div>
+    </div>
+
+    <div class="scanner-footer">
+      <p class="scanner-hint" id="scannerHint">Point camera at the QR code shown on your computer screen</p>
+      <div id="scannerError" class="scanner-error" style="display: none;"></div>
     </div>
   </div>
 

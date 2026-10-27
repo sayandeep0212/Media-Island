@@ -743,3 +743,184 @@ body {
   color: var(--text-muted);
 }
 
+/* WhatsApp Web Style QR Scanner Overlay */
+.scanner-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(5, 5, 8, 0.96);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: calc(var(--safe-top) + 20px) 20px calc(var(--safe-bottom) + 28px);
+}
+
+.scanner-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.scanner-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 10;
+  padding: 0 4px;
+}
+
+.scanner-title {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: block;
+}
+
+.scanner-sub {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.scanner-close-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  font-size: 18px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.scanner-close-btn:active {
+  transform: scale(0.92);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.scanner-viewport-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 310px;
+  height: 310px;
+  margin: auto;
+  border-radius: 28px;
+  overflow: hidden;
+  background: #000;
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.qr-reader-container {
+  width: 100% !important;
+  height: 100% !important;
+  border: none !important;
+  padding: 0 !important;
+  position: absolute !important;
+  inset: 0 !important;
+}
+
+.qr-reader-container video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  border-radius: 28px;
+}
+
+/* WhatsApp Viewfinder Frame */
+.scanner-frame {
+  position: absolute;
+  inset: 22px;
+  pointer-events: none;
+  z-index: 5;
+  transition: all 0.3s ease;
+}
+
+.scanner-frame .corner {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  border-color: var(--accent);
+  border-style: solid;
+  border-width: 0;
+  transition: border-color 0.3s ease;
+}
+
+.scanner-frame.success .corner {
+  border-color: #10b981 !important;
+}
+
+.scanner-frame .top-left {
+  top: 0; left: 0;
+  border-top-width: 4px;
+  border-left-width: 4px;
+  border-top-left-radius: 12px;
+}
+.scanner-frame .top-right {
+  top: 0; right: 0;
+  border-top-width: 4px;
+  border-right-width: 4px;
+  border-top-right-radius: 12px;
+}
+.scanner-frame .bottom-left {
+  bottom: 0; left: 0;
+  border-bottom-width: 4px;
+  border-left-width: 4px;
+  border-bottom-left-radius: 12px;
+}
+.scanner-frame .bottom-right {
+  bottom: 0; right: 0;
+  border-bottom-width: 4px;
+  border-right-width: 4px;
+  border-bottom-right-radius: 12px;
+}
+
+/* WhatsApp Laser Sweep Animation */
+.scanner-laser {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--accent) 50%, transparent);
+  box-shadow: 0 0 16px var(--accent), 0 0 4px #ffffff;
+  animation: laserSweep 2s ease-in-out infinite;
+}
+
+.scanner-frame.success .scanner-laser {
+  display: none;
+}
+
+@keyframes laserSweep {
+  0% { top: 0%; opacity: 0.3; }
+  50% { top: calc(100% - 3px); opacity: 1; }
+  100% { top: 0%; opacity: 0.3; }
+}
+
+.scanner-footer {
+  text-align: center;
+  z-index: 10;
+  padding: 0 10px;
+}
+
+.scanner-hint {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.scanner-error {
+  margin-top: 10px;
+  padding: 10px 14px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: var(--radius-sm);
+  color: #f87171;
+  font-size: 12px;
+}
+

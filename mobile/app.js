@@ -2,10 +2,21 @@
 (function () {
   const $ = id => document.getElementById(id);
 
+  const DEFAULT_FIREBASE_CONFIG = {
+    apiKey: "AIzaSyC6cLy4w_MVXIJX3glLjIn2aWCKtqgBpzo",
+    authDomain: "media-island.firebaseapp.com",
+    projectId: "media-island",
+    databaseURL: "https://media-island-default-rtdb.firebaseio.com",
+    storageBucket: "media-island.firebasestorage.app",
+    messagingSenderId: "277961059084",
+    appId: "1:277961059084:web:6f94aa2e3d5281b053b729",
+    measurementId: "G-45J422DSZM"
+  };
+
   // State variables
   let db = null;
-  let roomCode = "sayan-island";
-  let firebaseConfig = null;
+  let roomCode = "";
+  let firebaseConfig = DEFAULT_FIREBASE_CONFIG;
   let localWs = null;
   let isDraggingSlider = false;
   let currentDuration = 0;
@@ -41,8 +52,18 @@
   const settingsModal = $("settingsModal");
   const closeModalBtn = $("closeModalBtn");
   const roomCodeInput = $("roomCodeInput");
-  const firebaseConfigInput = $("firebaseConfigInput");
   const saveConfigBtn = $("saveConfigBtn");
+
+  // QR Scanner elements
+  const openScannerBtn = $("openScannerBtn");
+  const openScannerFromModalBtn = $("openScannerFromModalBtn");
+  const scannerOverlay = $("scannerOverlay");
+  const closeScannerBtn = $("closeScannerBtn");
+  const scannerFrame = $("scannerFrame");
+  const scannerHint = $("scannerHint");
+  const scannerError = $("scannerError");
+  let html5QrCode = null;
+  let isScanning = false;
 
   // Haptic feedback helper
   function vibrate(ms = 25) {
@@ -225,8 +246,7 @@
 
   // Modal Dialog Events
   settingsBtn.addEventListener("click", () => {
-    roomCodeInput.value = roomCode || "sayan-island";
-    firebaseConfigInput.value = firebaseConfig ? JSON.stringify(firebaseConfig, null, 2) : "";
+    roomCodeInput.value = roomCode || "";
     settingsModal.classList.add("open");
   });
 
@@ -240,33 +260,14 @@
 
   saveConfigBtn.addEventListener("click", () => {
     const newRoom = roomCodeInput.value.trim();
-    const configStr = firebaseConfigInput.value.trim();
 
     if (!newRoom) {
       alert("Please enter a Pairing Code / Room ID");
       return;
     }
 
-    let parsedConfig = null;
-    if (configStr) {
-      try {
-        parsedConfig = JSON.parse(configStr);
-      } catch (err) {
-        alert("Invalid JSON for Firebase Config. Please check the format.");
-        return;
-      }
-    }
-
     roomCode = newRoom;
-    firebaseConfig = parsedConfig;
-
     localStorage.setItem("media_island_room", roomCode);
-    if (firebaseConfig) {
-      localStorage.setItem("media_island_firebase_config", JSON.stringify(firebaseConfig));
-    } else {
-      localStorage.removeItem("media_island_firebase_config");
-    }
-
     settingsModal.classList.remove("open");
     connect();
   });
@@ -275,48 +276,30 @@
   async function loadConfigFromUrlOrStorage() {
     const params = new URLSearchParams(window.location.search);
     const urlRoom = params.get("room");
-    const urlConfig = params.get("config") || params.get("cfg");
 
-    if (urlRoom) {
-      roomCode = urlRoom;
+    if (urlRoom && urlRoom.trim()) {
+      roomCode = urlRoom.trim();
       localStorage.setItem("media_island_room", roomCode);
     } else {
-      roomCode = localStorage.getItem("media_island_room") || "sayan-island";
-    }
-
-    if (urlConfig) {
-      try {
-        firebaseConfig = JSON.parse(decodeURIComponent(urlConfig));
-        localStorage.setItem("media_island_firebase_config", JSON.stringify(firebaseConfig));
-      } catch {}
-    } else {
-      const stored = localStorage.getItem("media_island_firebase_config");
-      if (stored) {
-        try { firebaseConfig = JSON.parse(stored); } catch {}
+      const storedRoom = localStorage.getItem("media_island_room");
+      if (storedRoom && storedRoom !== "sayan-island") {
+        roomCode = storedRoom;
+      } else {
+        roomCode = "";
       }
     }
 
-    // Attempt to load local git-ignored firebase-config.json if available
-    if (!firebaseConfig) {
-      try {
-        const res = await fetch("./firebase-config.json");
-        if (res.ok) {
-          const fetched = await res.json();
-          if (fetched && fetched.apiKey && !fetched.apiKey.includes("your_api_key")) {
-            firebaseConfig = fetched;
-            localStorage.setItem("media_island_firebase_config", JSON.stringify(firebaseConfig));
-          }
-        }
-      } catch {}
-    }
-
-    if (firebaseConfig && !firebaseConfig.databaseURL && firebaseConfig.projectId) {
-      firebaseConfig.databaseURL = `https://${firebaseConfig.projectId}-default-rtdb.firebaseio.com`;
-    }
+    firebaseConfig = DEFAULT_FIREBASE_CONFIG;
   }
 
   // Connect to Firebase and Local WebSocket
   function connect() {
+    if (!roomCode) {
+      setStatus("connecting", "Pairing Required");
+      settingsModal.classList.add("open");
+      return;
+    }
+
     setStatus("connecting", "Connecting...");
 
     // 1. Connect to Firebase Realtime Database
@@ -399,16 +382,116 @@
       } catch {}
     }
 
-    if (!firebaseConfig && !isLocalHost) {
-      setStatus("connecting", "Setup Needed");
-      // Open settings modal if no configuration exists yet
-      setTimeout(() => {
-        if (!localStorage.getItem("media_island_firebase_config")) {
-          settingsModal.classList.add("open");
-        }
-      }, 500);
+    if (!roomCode && !isLocalHost) {
+      setStatus("connecting", "Pairing Required");
+      settingsModal.classList.add("open");
     }
   }
+
+  // --- WhatsApp Web Style Camera QR Scanner ---
+  function extractRoomFromScannedText(text) {
+    if (!text || typeof text !== "string") return null;
+    const trimmed = text.trim();
+
+    // 1. Full URL e.g. https://media-island.web.app/?room=island-xyz
+    try {
+      if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+        const parsedUrl = new URL(trimmed);
+        const room = parsedUrl.searchParams.get("room");
+        if (room && room.trim()) return room.trim();
+      }
+    } catch {}
+
+    // 2. Query parameter in string e.g. ?room=xyz
+    const match = trimmed.match(/[?&]room=([^&#\s]+)/i);
+    if (match && match[1]) {
+      return decodeURIComponent(match[1]).trim();
+    }
+
+    // 3. Raw room code format
+    if (/^[a-zA-Z0-9_\-]+$/.test(trimmed)) {
+      return trimmed;
+    }
+
+    return null;
+  }
+
+  async function startScanner() {
+    scannerError.style.display = "none";
+    scannerFrame.classList.remove("success");
+    scannerHint.textContent = "Point camera at the QR code shown on your computer screen";
+    scannerOverlay.classList.add("active");
+
+    if (settingsModal.classList.contains("open")) {
+      settingsModal.classList.remove("open");
+    }
+
+    if (!window.Html5Qrcode) {
+      scannerError.textContent = "Scanner library is loading. Please try again in a moment.";
+      scannerError.style.display = "block";
+      return;
+    }
+
+    try {
+      if (!html5QrCode) {
+        html5QrCode = new Html5Qrcode("qrReader");
+      }
+
+      isScanning = true;
+      await html5QrCode.start(
+        { facingMode: "environment" },
+        {
+          fps: 15,
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1.0
+        },
+        decodedText => {
+          onQrCodeDetected(decodedText);
+        },
+        () => {
+          // Frame scan pass without QR
+        }
+      );
+    } catch (err) {
+      console.error("Camera start failed:", err);
+      isScanning = false;
+      scannerError.textContent = "Camera permission denied or camera unavailable. You can enter your Room Code manually.";
+      scannerError.style.display = "block";
+    }
+  }
+
+  async function stopScanner() {
+    if (html5QrCode && isScanning) {
+      try {
+        isScanning = false;
+        await html5QrCode.stop();
+        await html5QrCode.clear();
+      } catch (e) {
+        console.error("Error stopping scanner:", e);
+      }
+    }
+    scannerOverlay.classList.remove("active");
+  }
+
+  function onQrCodeDetected(decodedText) {
+    const detectedRoom = extractRoomFromScannedText(decodedText);
+    if (!detectedRoom) return;
+
+    vibrate([40, 60, 40]);
+    scannerFrame.classList.add("success");
+    scannerHint.textContent = `Paired with ${detectedRoom}! Connecting...`;
+
+    setTimeout(async () => {
+      await stopScanner();
+      roomCode = detectedRoom;
+      localStorage.setItem("media_island_room", roomCode);
+      connect();
+    }, 450);
+  }
+
+  if (openScannerBtn) openScannerBtn.addEventListener("click", startScanner);
+  if (openScannerFromModalBtn) openScannerFromModalBtn.addEventListener("click", startScanner);
+  if (closeScannerBtn) closeScannerBtn.addEventListener("click", stopScanner);
 
   // Initialize
   loadConfigFromUrlOrStorage().then(() => {
