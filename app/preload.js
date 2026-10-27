@@ -11,5 +11,7 @@ contextBridge.exposeInMainWorld("island", {
   generateRoomCode: () => ipcRenderer.invoke("settings:generateRoomCode"),
   cmd: (cmd, value) => ipcRenderer.send("cmd", { cmd, value }),
   drag: (phase, screenX, screenY) => ipcRenderer.send("drag", { phase, screenX, screenY }),
-  interactive: on => ipcRenderer.send("interactive", on)
+  interactive: on => ipcRenderer.send("interactive", on),
+  openSettings: tab => ipcRenderer.send("openSettings", tab),
+  onSwitchTab: cb => ipcRenderer.on("switch-tab", (_e, tab) => cb(tab))
 });

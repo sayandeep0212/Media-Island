@@ -443,19 +443,29 @@
     const statusDot = $("statusDot");
     const roomCodeInput = $("roomCodeInput");
     const randomizeRoomBtn = $("randomizeRoomBtn");
-    const firebaseConfigInput = $("firebaseConfigInput");
     const saveConfigBtn = $("saveConfigBtn");
     const saveStatus = $("saveStatus");
 
     // Tab switching
-    document.querySelectorAll(".tab-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
+    function switchTab(tabId) {
+      if (!tabId) return;
+      const cleanId = tabId.replace(/^#/, "");
+      const targetBtn = document.querySelector(`.tab-btn[data-tab="${cleanId}"]`);
+      const targetContent = $(cleanId);
+      if (targetBtn && targetContent) {
         document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
         document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
-        btn.classList.add("active");
-        $(btn.dataset.tab).classList.add("active");
-      });
+        targetBtn.classList.add("active");
+        targetContent.classList.add("active");
+      }
+    }
+
+    document.querySelectorAll(".tab-btn").forEach(btn => {
+      btn.addEventListener("click", () => switchTab(btn.dataset.tab));
     });
+
+    if (window.location.hash) switchTab(window.location.hash);
+    if (window.island && window.island.onSwitchTab) window.island.onSwitchTab(switchTab);
 
     // Accent Color Handler
     function updateAccent(color) {

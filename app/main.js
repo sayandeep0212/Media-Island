@@ -182,22 +182,23 @@ function createWindow() {
   screen.on("display-metrics-changed", place);
 }
 
-function openSettings() {
+function openSettings(tab = "tab-remote") {
   if (settingsWin && !settingsWin.isDestroyed()) {
     settingsWin.show();
     settingsWin.focus();
+    if (tab) settingsWin.webContents.send("switch-tab", tab);
     return;
   }
-    settingsWin = new BrowserWindow({
-      width: 500,
-      height: 640,
-      title: "Media Island Settings & Remote • by sayandeep0212",
-      resizable: true,
-      autoHideMenuBar: true,
-      icon: path.join(__dirname, "icon.png"),
-      webPreferences: { preload: path.join(__dirname, "preload.js") }
-    });
-  settingsWin.loadFile("settings.html");
+  settingsWin = new BrowserWindow({
+    width: 500,
+    height: 640,
+    title: "Media Island Settings & Remote • by sayandeep0212",
+    resizable: true,
+    autoHideMenuBar: true,
+    icon: path.join(__dirname, "icon.png"),
+    webPreferences: { preload: path.join(__dirname, "preload.js") }
+  });
+  settingsWin.loadFile("settings.html", { hash: tab });
   settingsWin.on("closed", () => { settingsWin = null; });
 }
 
@@ -319,6 +320,10 @@ function startServer() {
 // IPC Handlers
 ipcMain.on("cmd", (_e, command) => {
   broadcastCommand(command.cmd, command.value);
+});
+
+ipcMain.on("openSettings", (_e, tab) => {
+  openSettings(tab || "tab-remote");
 });
 
 ipcMain.on("interactive", (_e, on) => {
