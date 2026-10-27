@@ -2,7 +2,22 @@
   "manifest_version": 3,
   "name": "Media Island",
   "version": "1.0.0",
-  "description": "Shows what's playing in Chrome in a Dynamic Island style pill on your desktop.",
+  "description": "Dynamic media controller and visualizer for Windows and Mobile, by sayandeep0212.",
+  "author": "sayandeep0212",
+  "homepage_url": "https://github.com/sayandeep0212/Media-Island",
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "action": {
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    },
+    "default_title": "Media Island by sayandeep0212"
+  },
   "permissions": ["tabs", "alarms"],
   "host_permissions": ["http://127.0.0.1:47890/*"],
   "background": { "service_worker": "background.js" },

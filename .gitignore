@@ -1,4 +1,24 @@
+# Dependencies
+node_modules/
 app/node_modules/
+
+# Build & releases
 app/release*/
 app/dist/
 app/builder-debug.yml
+
+# Environment variables & secrets (NEVER COMMIT)
+.env
+.env.*
+!.env.example
+firebase-config.json
+settings.json
+*.local
+
+# Firebase caches & logs
+.firebase/
+firebase-debug.log*
+
+# System & IDE files
+.DS_Store
+Thumbs.db

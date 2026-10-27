@@ -1,46 +1,81 @@
-# Media Island (Chrome extension + desktop app)
+# Media Island (Chrome Extension + Desktop App + Mobile Remote)
 
-## 1. Windows desktop app
+Media Island is a dynamic island for Windows that shows what is playing in Chrome with live audio waveforms, track controls, and a companion **Mobile Remote (PWA)** that allows you to control media and change visualizer colors directly from your phone.
 
-To run from source, install Node.js (https://nodejs.org), then:
+---
 
-```powershell
-cd app
-npm install
-npm start
-```
+## 1. Windows Desktop App
 
-To create a Windows installer:
+### Run from Source
+1. Install [Node.js](https://nodejs.org).
+2. Open PowerShell and run:
+   ```powershell
+   cd app
+   npm install
+   npm start
+   ```
 
-```powershell
-npm run build:win
-```
+### Features
+- **Floating Island**: Hover over the island to expand it; drag it anywhere on your screen.
+- **System Tray**: Right-click the tray icon and click **Settings & Mobile Remote**.
+- **Accent Color**: Customize the audio waveform and seekbar color with instant preview.
+- **Mobile QR Pairing**: Open Settings to see a QR code you can scan with your phone to instantly launch the remote control.
 
-The NSIS installer is created in `app/release/`. It lets users choose an install
-folder and adds Start Menu and desktop shortcuts. The app starts at login and
-listens on `127.0.0.1:47890`. Right-click the Media Island tray icon and choose
-**Settings** to change the island's accent color; the choice is saved for future
-launches.
+---
 
-Hover over the island to expand it. Drag the island to move it anywhere on the
-screen; click **×** to hide it until the next track starts.
+## 2. Chrome Extension
+1. Open Chrome and navigate to `chrome://extensions`.
+2. Turn on **Developer mode** in the top right.
+3. Click **Load unpacked** and select the `extension` folder.
+4. Play music or video in Chrome (YouTube, YouTube Music, Spotify Web, SoundCloud, etc.).
+5. Media Island will display album artwork, track title, artist, audio waveform, and playback controls.
 
-### If the island does not appear
+---
 
-- Make sure Media Island is running; its icon appears in the Windows system tray.
-- Run only one copy of the desktop app. If you see an "already running" message,
-  close the existing copy from its tray menu before launching it again.
-- In Chrome, open `chrome://extensions`, verify Media Island is enabled, and load
-  the `extension` folder using **Load unpacked** if it is not installed.
-- Reload the tab playing music after enabling the extension.
+## 3. Mobile Remote (Phone Control via Firebase or Local Wi-Fi)
 
-## 2. Chrome extension
-1. Open chrome://extensions
-2. Turn on Developer mode
-3. Click "Load unpacked" and choose the `extension` folder
-4. Play a video or song in Chrome. The pill appears at the top-center of your screen.
+You can manage all Media Island activities directly from your phone:
+- **Play / Pause, Next (`⏭`), Previous (`⏮`)**
+- **Live Seek Slider** (scrub through tracks with elapsed and remaining time)
+- **Sound Wave Bar Visualizer** (live bouncing equalizer on your phone screen)
+- **Color Changing of Media Playing Bars**: Tap preset color chips or use the color picker on your phone to instantly change the waveform bars on both your phone and desktop!
 
-Hover over the pill to expand it and use prev / play-pause / next or seek through the track.
-Next/prev work on YouTube, YouTube Music and Spotify Web; play/pause works everywhere.
-The website favicon appears as a badge over the album artwork. Native Windows app
-media sources are not currently detected.
+### Connecting from Your Phone
+
+#### Option A: Worldwide Cloud Access (Instant & Zero Setup)
+1. In the desktop app, right-click the tray icon and select **Settings & Mobile Remote**.
+2. Go to the **Phone Remote & Firebase** tab.
+3. Scan the QR code or open:
+   ```text
+   https://media-island.web.app/?room=<YOUR_ROOM_ID>
+   ```
+4. Works anywhere in the world on **4G / 5G cellular data or any Wi-Fi network**!
+
+#### Option B: Local Wi-Fi (Offline / Direct LAN)
+1. Ensure your phone and PC are on the same Wi-Fi.
+2. Open the direct LAN link displayed in Settings:
+   ```text
+   http://<your-pc-ip>:47890/?room=<YOUR_ROOM_ID>
+   ```
+
+---
+
+## 4. Security & Environment Configuration
+
+All sensitive API keys and Firebase credentials are kept strictly private and **never committed to GitHub**:
+
+1. Copy `.env.example` to `.env`:
+   ```powershell
+   copy .env.example .env
+   ```
+2. Fill in your Firebase credentials in `.env`.
+3. The `.env` file is excluded in `.gitignore` and loaded automatically by the desktop application.
+4. When pairing with your phone via QR code, the desktop app securely packages your room configuration so you never have to hardcode keys into the mobile client.
+
+---
+
+## Author & Copyright
+
+Designed and developed by **[sayandeep0212](https://github.com/sayandeep0212)**.
+
+Copyright &copy; 2026 **sayandeep0212**. All rights reserved.

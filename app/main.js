@@ -1,17 +1,99 @@
 const { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, screen, Tray } = require("electron");
 const fs = require("fs");
 const path = require("path");
+const http = require("http");
+const os = require("os");
 const { WebSocketServer } = require("ws");
+const QRCode = require("qrcode");
+const firebaseSync = require("./firebase-sync");
 
 let win;
 let settingsWin;
 let tray;
 const clients = new Set();
-let settings = { accentColor: "#ff8a3d" };
+function loadEnvConfig() {
+  const envPaths = [
+    path.join(__dirname, "..", ".env"),
+    path.join(__dirname, ".env"),
+    path.join(process.cwd(), ".env")
+  ];
+  for (const envPath of envPaths) {
+    if (fs.existsSync(envPath)) {
+      try {
+        const content = fs.readFileSync(envPath, "utf8");
+        for (const line of content.split(/\r?\n/)) {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed.startsWith("#")) continue;
+          const eq = trimmed.indexOf("=");
+          if (eq > 0) {
+            const key = trimmed.substring(0, eq).trim();
+            const val = trimmed.substring(eq + 1).trim().replace(/^['"]|['"]$/g, "");
+            process.env[key] = process.env[key] || val;
+          }
+        }
+      } catch {}
+    }
+  }
+
+  if (process.env.FIREBASE_API_KEY && process.env.FIREBASE_PROJECT_ID) {
+    return {
+      apiKey: process.env.FIREBASE_API_KEY,
+      authDomain: process.env.FIREBASE_AUTH_DOMAIN || `${process.env.FIREBASE_PROJECT_ID}.firebaseapp.com`,
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      databaseURL: process.env.FIREBASE_DATABASE_URL || `https://${process.env.FIREBASE_PROJECT_ID}-default-rtdb.firebaseio.com`,
+      storageBucket: process.env.FIREBASE_STORAGE_BUCKET || `${process.env.FIREBASE_PROJECT_ID}.firebasestorage.app`,
+      messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || "",
+      appId: process.env.FIREBASE_APP_ID || "",
+      measurementId: process.env.FIREBASE_MEASUREMENT_ID || ""
+    };
+  }
+  return null;
+}
+
+const GLOBAL_WEB_URL = "https://media-island.web.app";
+
+function generateRoomCode() {
+  const chars = "23456789abcdefghjkmnpqrstuvwxyz";
+  let suffix = "";
+  for (let i = 0; i < 6; i++) {
+    suffix += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return `island-${suffix}`;
+}
+
+let settings = {
+  accentColor: "#ff8a3d",
+  roomCode: "sayan-island",
+  firebaseConfig: null
+};
 let dragOffset;
+let currentRemoteStatus = { status: "not_configured", message: "Connecting to Firebase..." };
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
+}
+
+let lastMediaState = null;
+
+function getLocalIp() {
+  const interfaces = os.networkInterfaces();
+  const candidates = [];
+  for (const name in interfaces) {
+    const isVirtual = /virtual|vbox|vmware|vethernet|wsl|hyper-v|bluetooth|loopback/i.test(name);
+    for (const iface of interfaces[name]) {
+      if (iface.family === "IPv4" && !iface.internal) {
+        if (iface.address.startsWith("169.254.") || iface.address.startsWith("192.168.56.")) {
+          continue;
+        }
+        candidates.push({ name, address: iface.address, isVirtual });
+      }
+    }
+  }
+  const primary = candidates.find(c => !c.isVirtual && /wi-?fi|wlan/i.test(c.name))
+    || candidates.find(c => !c.isVirtual && /ethernet/i.test(c.name))
+    || candidates.find(c => !c.isVirtual)
+    || candidates[0];
+  return primary ? primary.address : "127.0.0.1";
 }
 
 function place() {
@@ -27,8 +109,33 @@ function loadSettings() {
     if (typeof saved.accentColor === "string" && /^#[0-9a-f]{6}$/i.test(saved.accentColor)) {
       settings.accentColor = saved.accentColor;
     }
+    if (typeof saved.roomCode === "string" && saved.roomCode.trim()) {
+      settings.roomCode = saved.roomCode.trim();
+    }
+    if (saved.firebaseConfig && typeof saved.firebaseConfig === "object" && saved.firebaseConfig.apiKey) {
+      settings.firebaseConfig = saved.firebaseConfig;
+    } else {
+      settings.firebaseConfig = loadEnvConfig();
+    }
   } catch (error) {
-    if (error.code !== "ENOENT") throw error;
+    if (error.code !== "ENOENT") console.error("Error loading settings:", error);
+    settings.firebaseConfig = loadEnvConfig();
+  }
+
+  if (!settings.roomCode) {
+    settings.roomCode = generateRoomCode();
+    saveSettings();
+  }
+}
+
+function saveSettings() {
+  try {
+    fs.writeFileSync(
+      path.join(app.getPath("userData"), "settings.json"),
+      JSON.stringify(settings, null, 2)
+    );
+  } catch (err) {
+    console.error("Error saving settings:", err);
   }
 }
 
@@ -41,7 +148,7 @@ function createTray() {
   tray = new Tray(trayIcon());
   tray.setToolTip("Media Island");
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: "Settings", click: openSettings },
+    { label: "Settings & Mobile Remote", click: openSettings },
     { type: "separator" },
     { label: "Quit Media Island", click: () => app.quit() }
   ]));
@@ -70,52 +177,144 @@ function openSettings() {
     settingsWin.focus();
     return;
   }
-  settingsWin = new BrowserWindow({
-    width: 360,
-    height: 300,
-    title: "Media Island Settings",
-    resizable: false,
-    autoHideMenuBar: true,
-    webPreferences: { preload: path.join(__dirname, "preload.js") }
-  });
+    settingsWin = new BrowserWindow({
+      width: 500,
+      height: 640,
+      title: "Media Island Settings & Remote • by sayandeep0212",
+      resizable: true,
+      autoHideMenuBar: true,
+      icon: path.join(__dirname, "icon.png"),
+      webPreferences: { preload: path.join(__dirname, "preload.js") }
+    });
   settingsWin.loadFile("settings.html");
   settingsWin.on("closed", () => { settingsWin = null; });
 }
 
+function broadcastCommand(cmd, value = null) {
+  const payload = JSON.stringify({ type: "cmd", cmd, value });
+  for (const c of clients) {
+    if (c.readyState === 1) c.send(payload);
+  }
+}
+
+function applyAccentColor(color) {
+  if (typeof color !== "string" || !/^#[0-9a-f]{6}$/i.test(color)) return;
+  settings.accentColor = color;
+  saveSettings();
+  if (win && !win.isDestroyed()) win.webContents.send("accent-color", color);
+  if (tray) tray.setImage(trayIcon());
+  if (settingsWin && !settingsWin.isDestroyed()) settingsWin.webContents.send("accent-color", color);
+  firebaseSync.pushSettings(settings);
+}
+
 function startServer() {
-  const wss = new WebSocketServer({ host: "127.0.0.1", port: 47890 });
-  wss.on("error", error => {
-    console.error("Media Island could not start its local media server:", error);
+  const localMobileDir = path.join(__dirname, "mobile");
+  const parentMobileDir = path.join(__dirname, "..", "mobile");
+  const mobileDir = fs.existsSync(localMobileDir) ? localMobileDir : parentMobileDir;
+
+  const mimeTypes = {
+    ".html": "text/html; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".js": "application/javascript; charset=utf-8",
+    ".json": "application/json; charset=utf-8",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".svg": "image/svg+xml",
+    ".ico": "image/x-icon"
+  };
+
+  const server = http.createServer((req, res) => {
+    let reqPath = req.url.split("?")[0];
+    if (reqPath === "/" || reqPath === "/mobile" || reqPath === "/remote") reqPath = "/index.html";
+    if (reqPath.startsWith("/mobile/")) reqPath = reqPath.replace("/mobile/", "/");
+
+    const filePath = path.join(mobileDir, path.normalize(reqPath).replace(/^(\.\.[\/\\])+/, ""));
+    const ext = path.extname(filePath).toLowerCase();
+
+    fs.readFile(filePath, (err, content) => {
+      if (err) {
+        res.writeHead(404, { "Content-Type": "text/plain" });
+        res.end("404 Not Found");
+        return;
+      }
+      res.writeHead(200, {
+        "Content-Type": mimeTypes[ext] || "application/octet-stream",
+        "Access-Control-Allow-Origin": "*"
+      });
+      res.end(content);
+    });
+  });
+
+  const wss = new WebSocketServer({ server });
+
+  server.on("error", error => {
+    console.error("Media Island server error:", error);
     if (error.code === "EADDRINUSE") {
       dialog.showErrorBox(
         "Media Island is already running",
-        "Another Media Island instance is already using the media connection. Close the other instance from the system tray, then launch Media Island again."
+        "Another Media Island instance is already using port 47890. Close the other instance from the system tray, then launch Media Island again."
       );
     } else {
-      dialog.showErrorBox("Media Island could not start", error.message);
+      dialog.showErrorBox("Media Island server could not start", error.message);
     }
     app.quit();
   });
+
   wss.on("connection", ws => {
     clients.add(ws);
+
+    // Send current accent color and active playback state immediately on connection
+    ws.send(JSON.stringify({ type: "accent-color", color: settings.accentColor }));
+    if (lastMediaState) {
+      ws.send(JSON.stringify(lastMediaState));
+    }
+
     ws.on("message", data => {
       try {
         const m = JSON.parse(data.toString());
         if (m.type === "ping") return;
-        if (win) win.webContents.send("state", m);
+
+        if (m.type === "cmd") {
+          if (m.cmd === "setAccentColor" && m.value) {
+            applyAccentColor(m.value);
+          } else {
+            broadcastCommand(m.cmd, m.value);
+          }
+          return;
+        }
+
+        // State update from Chrome extension
+        lastMediaState = m;
+        if (win && !win.isDestroyed()) win.webContents.send("state", m);
+        firebaseSync.pushState(m);
+
+        // Also broadcast state to any mobile clients connected directly over WebSocket
+        const broadcastMsg = JSON.stringify(m);
+        for (const c of clients) {
+          if (c !== ws && c.readyState === 1) c.send(broadcastMsg);
+        }
       } catch {}
     });
+
     ws.on("close", () => clients.delete(ws));
+  });
+
+  server.listen(47890, "0.0.0.0", () => {
+    console.log(`Media Island server listening on 0.0.0.0:47890 (Local: http://${getLocalIp()}:47890)`);
   });
 }
 
+// IPC Handlers
 ipcMain.on("cmd", (_e, command) => {
-  for (const c of clients) if (c.readyState === 1) c.send(JSON.stringify({ type: "cmd", ...command }));
+  broadcastCommand(command.cmd, command.value);
 });
+
 ipcMain.on("interactive", (_e, on) => {
   if (!win) return;
   win.setIgnoreMouseEvents(!on, { forward: true });
 });
+
 ipcMain.on("drag", (event, { phase, screenX, screenY }) => {
   if (!win || event.sender !== win.webContents) return;
   if (phase === "start") {
@@ -131,16 +330,79 @@ ipcMain.on("drag", (event, { phase, screenX, screenY }) => {
     dragOffset = null;
   }
 });
+
 ipcMain.handle("settings:getAccentColor", () => settings.accentColor);
 ipcMain.handle("settings:setAccentColor", (_e, color) => {
-  if (typeof color !== "string" || !/^#[0-9a-f]{6}$/i.test(color)) {
-    throw new TypeError("Accent color must be a six-digit hex color.");
+  applyAccentColor(color);
+  return settings.accentColor;
+});
+
+ipcMain.handle("settings:generateRoomCode", () => generateRoomCode());
+
+ipcMain.handle("settings:getRemoteConfig", async () => {
+  const localIp = getLocalIp();
+  const localUrl = `http://${localIp}:47890/?room=${encodeURIComponent(settings.roomCode)}`;
+  const globalUrl = `${GLOBAL_WEB_URL}/?room=${encodeURIComponent(settings.roomCode)}`;
+  
+  // Embed config in QR URL so scanning phone auto-configures with ZERO hardcoded keys in repository
+  const configParam = (settings.firebaseConfig && settings.firebaseConfig.apiKey)
+    ? `&cfg=${encodeURIComponent(JSON.stringify(settings.firebaseConfig))}`
+    : "";
+  const pairingQrUrl = `${GLOBAL_WEB_URL}/?room=${encodeURIComponent(settings.roomCode)}${configParam}`;
+
+  let qrCodeDataUrl = "";
+  try {
+    qrCodeDataUrl = await QRCode.toDataURL(pairingQrUrl, {
+      margin: 1,
+      width: 160,
+      color: { dark: "#000000ff", light: "#ffffffff" }
+    });
+  } catch {}
+
+  return {
+    roomCode: settings.roomCode,
+    firebaseConfig: settings.firebaseConfig,
+    localUrl,
+    globalUrl,
+    qrCodeDataUrl,
+    status: currentRemoteStatus
+  };
+});
+
+ipcMain.handle("settings:saveRemoteConfig", async (_e, { roomCode, firebaseConfig }) => {
+  if (roomCode && typeof roomCode === "string") {
+    settings.roomCode = roomCode.trim();
   }
-  settings.accentColor = color;
-  fs.writeFileSync(path.join(app.getPath("userData"), "settings.json"), JSON.stringify(settings, null, 2));
-  if (win && !win.isDestroyed()) win.webContents.send("accent-color", color);
-  if (tray) tray.setImage(trayIcon());
-  return color;
+  settings.firebaseConfig = firebaseConfig;
+  saveSettings();
+
+  firebaseSync.setup(settings.firebaseConfig, settings.roomCode);
+
+  const localIp = getLocalIp();
+  const localUrl = `http://${localIp}:47890/?room=${encodeURIComponent(settings.roomCode)}`;
+  const globalUrl = `${GLOBAL_WEB_URL}/?room=${encodeURIComponent(settings.roomCode)}`;
+  const configParam = (settings.firebaseConfig && settings.firebaseConfig.apiKey)
+    ? `&cfg=${encodeURIComponent(JSON.stringify(settings.firebaseConfig))}`
+    : "";
+  const pairingQrUrl = `${GLOBAL_WEB_URL}/?room=${encodeURIComponent(settings.roomCode)}${configParam}`;
+
+  let qrCodeDataUrl = "";
+  try {
+    qrCodeDataUrl = await QRCode.toDataURL(pairingQrUrl, {
+      margin: 1,
+      width: 160,
+      color: { dark: "#000000ff", light: "#ffffffff" }
+    });
+  } catch {}
+
+  return {
+    roomCode: settings.roomCode,
+    firebaseConfig: settings.firebaseConfig,
+    localUrl,
+    globalUrl,
+    qrCodeDataUrl,
+    status: currentRemoteStatus
+  };
 });
 
 app.whenReady().then(() => {
@@ -149,9 +411,23 @@ app.whenReady().then(() => {
   loadSettings();
   createTray();
   app.setLoginItemSettings({ openAtLogin: true });
+
+  // Initialize Firebase synchronization
+  firebaseSync.init(settings.firebaseConfig, settings.roomCode, {
+    onCommand: (cmd, value) => broadcastCommand(cmd, value),
+    onSetAccentColor: color => applyAccentColor(color),
+    onStatusChange: (status, message) => {
+      currentRemoteStatus = { status, message };
+      if (settingsWin && !settingsWin.isDestroyed()) {
+        settingsWin.webContents.send("remote-status", currentRemoteStatus);
+      }
+    }
+  });
+
   startServer();
   createWindow();
 });
+
 app.on("second-instance", () => {
   if (settingsWin && !settingsWin.isDestroyed()) {
     settingsWin.show();

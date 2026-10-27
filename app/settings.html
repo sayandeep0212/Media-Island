@@ -1,38 +1,574 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Media Island Settings</title>
-<style>
-  :root { color-scheme: dark; font-family: "Segoe UI", sans-serif; background: #171717; color: #f5f5f5; }
-  body { margin: 0; padding: 28px; }
-  h1 { margin: 0 0 8px; font-size: 21px; }
-  p { margin: 0; color: #aaa; font-size: 13px; line-height: 1.5; }
-  .picker { display: flex; align-items: center; justify-content: space-between; margin-top: 28px; padding: 16px; border: 1px solid #333; border-radius: 12px; }
-  label { font-size: 14px; font-weight: 600; }
-  input { width: 48px; height: 38px; padding: 2px; border: 1px solid #555; border-radius: 8px; background: transparent; cursor: pointer; }
-  #status { min-height: 18px; margin-top: 12px; color: #aaa; font-size: 12px; }
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Media Island Settings & Remote</title>
+  <style>
+    :root {
+      --accent: #ff8a3d;
+      --bg: #121216;
+      --surface: #1a1a22;
+      --surface-hover: #22222c;
+      --border: rgba(255, 255, 255, 0.08);
+      --text: #f4f4f5;
+      --text-muted: #8e8e98;
+      --radius: 12px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color-scheme: dark;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      padding: 20px;
+      user-select: none;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      background: #000;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+    }
+
+    h1 { font-size: 18px; font-weight: 700; }
+    .subtitle { font-size: 12px; color: var(--text-muted); }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 20px;
+      padding-bottom: 8px;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn.active {
+      background: var(--surface);
+      color: var(--text);
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Cards */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .card-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.4;
+      margin-bottom: 14px;
+    }
+
+    /* Wave Preview */
+    .preview-box {
+      background: #000;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 10px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .wave-demo {
+      display: flex;
+      align-items: center;
+      gap: 3.5px;
+      height: 22px;
+    }
+
+    .wave-demo i {
+      display: block;
+      width: 3.5px;
+      border-radius: 4px;
+      background: var(--accent);
+      height: 6px;
+      animation: bar 0.9s ease-in-out infinite;
+    }
+
+    .wave-demo i:nth-child(1) { animation-delay: -0.7s; }
+    .wave-demo i:nth-child(2) { animation-delay: -0.3s; }
+    .wave-demo i:nth-child(3) { animation-delay: -0.5s; }
+    .wave-demo i:nth-child(4) { animation-delay: -0.1s; }
+    .wave-demo i:nth-child(5) { animation-delay: -0.6s; }
+
+    @keyframes bar {
+      0%, 100% { height: 6px; }
+      50% { height: 22px; }
+    }
+
+    /* Color Palette */
+    .picker-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .color-input {
+      width: 44px;
+      height: 38px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .presets-grid {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .color-circle {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+
+    .color-circle:hover { transform: scale(1.15); }
+
+    /* Remote & QR Code */
+    .remote-hero {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .qr-container {
+      width: 140px;
+      height: 140px;
+      background: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      flex: none;
+      padding: 6px;
+    }
+
+    .qr-container img {
+      width: 128px;
+      height: 128px;
+      object-fit: contain;
+      display: block;
+    }
+
+    .remote-info {
+      flex: 1;
+      font-size: 12px;
+    }
+
+    .status-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      font-size: 11px;
+      margin-bottom: 8px;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #71717a;
+    }
+
+    .dot.green { background: #10b981; box-shadow: 0 0 8px #10b981; }
+    .dot.yellow { background: #f59e0b; box-shadow: 0 0 8px #f59e0b; }
+
+    /* Form Fields */
+    .form-group {
+      margin-bottom: 12px;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: var(--text-muted);
+    }
+
+    input[type="text"], textarea {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      color: var(--text);
+      font-size: 12px;
+      outline: none;
+      font-family: inherit;
+    }
+
+    input[type="text"]:focus, textarea:focus {
+      border-color: var(--accent);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 64px;
+      font-family: monospace;
+      font-size: 11px;
+    }
+
+    .btn {
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: filter 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn:hover { filter: brightness(1.1); }
+
+    .link-text {
+      color: var(--accent);
+      text-decoration: none;
+      word-break: break-all;
+    }
+
+    #saveStatus {
+      font-size: 11px;
+      margin-top: 8px;
+      min-height: 16px;
+      color: #10b981;
+    }
+
+    /* Footer Branding */
+    .app-footer {
+      margin-top: 24px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .footer-meta {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+
+    .author-link {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .author-link:hover {
+      text-decoration: underline;
+    }
+
+    .footer-copyright {
+      font-size: 10px;
+      opacity: 0.7;
+    }
+  </style>
 </head>
 <body>
-  <h1>Media Island</h1>
-  <p>Personalize the accent color used by the island's waveform and controls.</p>
-  <div class="picker">
-    <label for="accent">Accent color</label>
-    <input id="accent" type="color" aria-label="Choose accent color">
+  <div class="header">
+    <div class="brand-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 32 32">
+        <rect x="2" y="7" width="28" height="18" rx="9" fill="#000" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+        <rect x="6" y="11" width="20" height="10" rx="5" fill="var(--accent)"/>
+      </svg>
+    </div>
+    <div>
+      <h1>Media Island</h1>
+      <div class="subtitle">by <strong>sayandeep0212</strong> • Desktop Settings & Mobile Pairing</div>
+    </div>
   </div>
-  <div id="status" role="status"></div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="tab-color">Appearance</button>
+    <button class="tab-btn" data-tab="tab-remote">Phone Remote & Firebase</button>
+  </div>
+
+  <!-- Tab 1: Appearance -->
+  <div id="tab-color" class="tab-content active">
+    <div class="card">
+      <div class="card-title">Island Accent Color</div>
+      <div class="card-desc">Personalize the waveform visualizer bars and playback controls.</div>
+
+      <div class="preview-box">
+        <span style="font-size: 12px; font-weight: 600;">Media Waveform Preview</span>
+        <div class="wave-demo" aria-hidden="true">
+          <i></i><i></i><i></i><i></i><i></i>
+        </div>
+      </div>
+
+      <div class="picker-row">
+        <input id="accentPicker" class="color-input" type="color" aria-label="Accent color">
+        <span id="hexDisplay" style="font-family: monospace; font-size: 13px; font-weight: 600;">#FF8A3D</span>
+      </div>
+
+      <label>Quick Presets</label>
+      <div class="presets-grid" id="presetContainer">
+        <div class="color-circle" data-color="#ff8a3d" style="background: #ff8a3d;" title="Cyberpunk Orange"></div>
+        <div class="color-circle" data-color="#00f0ff" style="background: #00f0ff;" title="Electric Cyan"></div>
+        <div class="color-circle" data-color="#ff2a6d" style="background: #ff2a6d;" title="Neon Pink"></div>
+        <div class="color-circle" data-color="#05ffa1" style="background: #05ffa1;" title="Emerald Green"></div>
+        <div class="color-circle" data-color="#b537f2" style="background: #b537f2;" title="Royal Violet"></div>
+        <div class="color-circle" data-color="#ffb703" style="background: #ffb703;" title="Golden Amber"></div>
+        <div class="color-circle" data-color="#ff3344" style="background: #ff3344;" title="Crimson Red"></div>
+        <div class="color-circle" data-color="#e0e6ed" style="background: #e0e6ed;" title="Ice White"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab 2: Phone Remote & Firebase -->
+  <div id="tab-remote" class="tab-content">
+    <div class="card">
+      <div class="card-title">Scan to Control from Phone (Global & Wi-Fi)</div>
+      <div class="card-desc">Scan with your phone camera. Works anywhere in the world on 4G, 5G, or Wi-Fi!</div>
+
+      <div class="remote-hero">
+        <div class="qr-container">
+          <img id="qrImage" alt="Scan QR to pair phone" src="">
+        </div>
+        <div class="remote-info">
+          <div id="remoteStatusTag" class="status-tag">
+            <span id="statusDot" class="dot"></span>
+            <span id="remoteStatusText">Checking connection...</span>
+          </div>
+          <p style="margin-bottom: 4px; font-weight: 600; color: #fff;">Worldwide Cloud Link (Cellular / Any Wi-Fi):</p>
+          <div style="display: flex; gap: 6px; align-items: center; margin-bottom: 10px;">
+            <a id="globalUrlLink" class="link-text" href="https://media-island.web.app" target="_blank" style="font-size: 11px;">https://media-island.web.app</a>
+            <button id="copyGlobalLinkBtn" class="btn" style="padding: 3px 8px; font-size: 10px; cursor: pointer;">Copy</button>
+          </div>
+
+          <p style="margin-bottom: 2px; color: var(--text-muted); font-size: 11px;">Direct LAN Link (Local Wi-Fi Only):</p>
+          <a id="localUrlLink" class="link-text" href="#" target="_blank" style="font-size: 11px; opacity: 0.8;">http://localhost:47890</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Pairing & Firebase Cloud Sync</div>
+      <div class="card-desc">Every Media Island user gets a unique Room ID to pair and control their desktop secretly.</div>
+
+      <div class="form-group">
+        <label for="roomCodeInput">Pairing Code / Room ID</label>
+        <div style="display: flex; gap: 8px;">
+          <input type="text" id="roomCodeInput" placeholder="e.g. sayan-island or island-8x29a">
+          <button id="randomizeRoomBtn" class="btn" type="button" style="white-space: nowrap; font-size: 11px;">🎲 Randomize</button>
+        </div>
+        <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Share this ID or QR code with your phone to link controls.</div>
+      </div>
+
+      <div class="form-group">
+        <label for="firebaseConfigInput">Firebase Web Config (JSON)</label>
+        <textarea id="firebaseConfigInput" placeholder='{"apiKey": "...", "databaseURL": "https://...", "projectId": "..."}'></textarea>
+      </div>
+
+      <button id="saveConfigBtn" class="btn">Save & Sync with Firebase</button>
+      <div id="saveStatus"></div>
+    </div>
+  </div>
+
+  <!-- App Footer with Copyright -->
+  <footer class="app-footer">
+    <div class="footer-meta">
+      <span>Media Island v1.0.0</span>
+      <span>•</span>
+      <span>Crafted with ❤️ by <a href="https://github.com/sayandeep0212" target="_blank" class="author-link">sayandeep0212</a></span>
+    </div>
+    <div class="footer-copyright">Copyright &copy; 2026 sayandeep0212. All rights reserved.</div>
+  </footer>
+
   <script>
-    const picker = document.getElementById("accent");
-    const status = document.getElementById("status");
-    window.island.getAccentColor().then(color => { picker.value = color; });
-    picker.addEventListener("input", async () => {
+    const $ = id => document.getElementById(id);
+    const accentPicker = $("accentPicker");
+    const hexDisplay = $("hexDisplay");
+    const presetContainer = $("presetContainer");
+    const qrImage = $("qrImage");
+    const globalUrlLink = $("globalUrlLink");
+    const copyGlobalLinkBtn = $("copyGlobalLinkBtn");
+    const localUrlLink = $("localUrlLink");
+    const remoteStatusText = $("remoteStatusText");
+    const statusDot = $("statusDot");
+    const roomCodeInput = $("roomCodeInput");
+    const randomizeRoomBtn = $("randomizeRoomBtn");
+    const firebaseConfigInput = $("firebaseConfigInput");
+    const saveConfigBtn = $("saveConfigBtn");
+    const saveStatus = $("saveStatus");
+
+    // Tab switching
+    document.querySelectorAll(".tab-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+        btn.classList.add("active");
+        $(btn.dataset.tab).classList.add("active");
+      });
+    });
+
+    // Accent Color Handler
+    function updateAccent(color) {
+      if (!color) return;
+      document.documentElement.style.setProperty("--accent", color);
+      accentPicker.value = color;
+      hexDisplay.textContent = color.toUpperCase();
+    }
+
+    window.island.getAccentColor().then(updateAccent);
+    window.island.onAccentColor(updateAccent);
+
+    accentPicker.addEventListener("input", () => {
+      updateAccent(accentPicker.value);
+      window.island.setAccentColor(accentPicker.value);
+    });
+
+    presetContainer.addEventListener("click", e => {
+      const circle = e.target.closest(".color-circle");
+      if (!circle) return;
+      const color = circle.dataset.color;
+      updateAccent(color);
+      window.island.setAccentColor(color);
+    });
+
+    // Remote Configuration Handler
+    function renderRemoteConfig(config) {
+      if (!config) return;
+      roomCodeInput.value = config.roomCode || "sayan-island";
+      if (config.firebaseConfig) {
+        firebaseConfigInput.value = JSON.stringify(config.firebaseConfig, null, 2);
+      }
+      if (config.qrCodeDataUrl) {
+        qrImage.src = config.qrCodeDataUrl;
+      }
+      if (config.globalUrl) {
+        globalUrlLink.href = config.globalUrl;
+        globalUrlLink.textContent = config.globalUrl;
+      }
+      if (config.localUrl) {
+        localUrlLink.href = config.localUrl;
+        localUrlLink.textContent = config.localUrl;
+      }
+      if (config.status) {
+        updateStatusBadge(config.status);
+      }
+    }
+
+    function updateStatusBadge(statusObj) {
+      if (!statusObj) return;
+      remoteStatusText.textContent = statusObj.message || statusObj.status;
+      if (statusObj.status === "connected") {
+        statusDot.className = "dot green";
+      } else if (statusObj.status === "connecting") {
+        statusDot.className = "dot yellow";
+      } else {
+        statusDot.className = "dot";
+      }
+    }
+
+    window.island.getRemoteConfig().then(renderRemoteConfig);
+    window.island.onRemoteStatus(updateStatusBadge);
+
+    randomizeRoomBtn.addEventListener("click", async () => {
+      if (window.island.generateRoomCode) {
+        const newCode = await window.island.generateRoomCode();
+        roomCodeInput.value = newCode;
+      }
+    });
+
+    copyGlobalLinkBtn.addEventListener("click", () => {
+      if (globalUrlLink.href) {
+        navigator.clipboard.writeText(globalUrlLink.href).then(() => {
+          const original = copyGlobalLinkBtn.textContent;
+          copyGlobalLinkBtn.textContent = "Copied!";
+          setTimeout(() => { copyGlobalLinkBtn.textContent = original; }, 1500);
+        });
+      }
+    });
+
+    saveConfigBtn.addEventListener("click", async () => {
+      const room = roomCodeInput.value.trim();
+      const rawConfig = firebaseConfigInput.value.trim();
+      let parsed = null;
+      if (rawConfig) {
+        try {
+          parsed = JSON.parse(rawConfig);
+        } catch {
+          saveStatus.textContent = "Invalid JSON in Firebase configuration.";
+          saveStatus.style.color = "#ef4444";
+          return;
+        }
+      }
+
+      saveStatus.textContent = "Saving and connecting...";
+      saveStatus.style.color = "#f59e0b";
+
       try {
-        await window.island.setAccentColor(picker.value);
-        status.textContent = "Color saved.";
-      } catch (error) {
-        status.textContent = `Couldn't save color: ${error.message}`;
+        const updated = await window.island.saveRemoteConfig({
+          roomCode: room || "sayan-island",
+          firebaseConfig: parsed
+        });
+        renderRemoteConfig(updated);
+        saveStatus.textContent = "Saved successfully! Ready to connect.";
+        saveStatus.style.color = "#10b981";
+      } catch (err) {
+        saveStatus.textContent = "Failed to save: " + err.message;
+        saveStatus.style.color = "#ef4444";
       }
     });
   </script>

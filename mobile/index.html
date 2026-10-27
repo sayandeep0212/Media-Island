@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Media Island">
+  <title>Media Island Remote</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+  
+  <!-- Firebase Compat SDKs for universal zero-config web & mobile execution -->
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+</head>
+<body>
+  <!-- Top App Header -->
+  <header class="app-header">
+    <div class="brand-wrapper">
+      <div class="brand-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 32 32">
+          <rect x="2" y="7" width="28" height="18" rx="9" fill="#000" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+          <rect x="6" y="11" width="20" height="10" rx="5" fill="var(--accent)"/>
+        </svg>
+      </div>
+      <div>
+        <span class="brand-title">Media Island</span>
+        <span class="brand-author">by sayandeep0212</span>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <div id="statusBadge" class="status-badge connecting">
+        <span class="status-dot"></span>
+        <span id="statusText">Connecting</span>
+      </div>
+      <button id="settingsBtn" class="icon-btn" aria-label="Settings & Pairing" title="Settings & Pairing">
+        ⚙️
+      </button>
+    </div>
+  </header>
+
+  <!-- Dynamic Island Player Card -->
+  <main class="player-card">
+    <!-- Island Pill Header Preview -->
+    <div id="islandPill" class="island-preview">
+      <div id="artWrap" class="art-wrap">
+        <span id="sourceBadge" class="source-badge">
+          <img id="sourceIcon" alt="" src="">
+          <span id="sourceFallback" class="source-fallback">M</span>
+        </span>
+      </div>
+      <div class="track-meta">
+        <div id="trackTitle" class="track-title">No Media Playing</div>
+        <div id="trackArtist" class="track-artist">Connect your desktop browser</div>
+      </div>
+      <!-- Waveform Visualizer with dynamic accent color -->
+      <div id="wave" class="wave-visualizer" aria-hidden="true">
+        <i></i><i></i><i></i><i></i><i></i>
+      </div>
+    </div>
+
+    <!-- Active Media Display Info -->
+    <div class="active-meta">
+      <div id="activeTitle" class="active-title">Media Island Remote</div>
+      <div id="activeArtist" class="active-artist">Ready to control desktop audio & video</div>
+      <div id="sourceTag" class="source-tag">
+        <span id="sourceName">Desktop Chrome</span>
+      </div>
+    </div>
+
+    <!-- Seek Progress Bar -->
+    <div class="progress-container">
+      <div class="slider-wrapper">
+        <input id="seekSlider" class="seek-slider" type="range" min="0" max="100" value="0" aria-label="Scrub through media">
+      </div>
+      <div class="time-row">
+        <span id="elapsedTime">0:00</span>
+        <span id="remainingTime">-0:00</span>
+      </div>
+    </div>
+
+    <!-- Playback Controls -->
+    <div class="controls-row">
+      <button id="prevBtn" class="ctrl-btn secondary" aria-label="Previous Track" title="Previous Track">
+        ⏮
+      </button>
+      <button id="playPauseBtn" class="ctrl-btn primary" aria-label="Play or Pause" title="Play or Pause">
+        ▶
+      </button>
+      <button id="nextBtn" class="ctrl-btn secondary" aria-label="Next Track" title="Next Track">
+        ⏭
+      </button>
+    </div>
+  </main>
+
+  <!-- Accent Color Studio: Color changing of media playing bars -->
+  <section class="color-studio">
+    <div class="section-title">
+      <span>Sound Wave Color</span>
+      <span id="activeHexLabel" style="color: var(--accent); font-family: monospace; font-size: 13px;">#FF8A3D</span>
+    </div>
+    <p class="section-desc">Change the color of the media playing bars and desktop island in real-time.</p>
+
+    <!-- Quick Palette -->
+    <div class="color-presets" id="colorPresets">
+      <div class="preset-chip active" data-color="#ff8a3d" style="background: #ff8a3d;" title="Cyberpunk Orange"></div>
+      <div class="preset-chip" data-color="#00f0ff" style="background: #00f0ff;" title="Electric Cyan"></div>
+      <div class="preset-chip" data-color="#ff2a6d" style="background: #ff2a6d;" title="Neon Pink"></div>
+      <div class="preset-chip" data-color="#05ffa1" style="background: #05ffa1;" title="Emerald Green"></div>
+      <div class="preset-chip" data-color="#b537f2" style="background: #b537f2;" title="Royal Violet"></div>
+      <div class="preset-chip" data-color="#ffb703" style="background: #ffb703;" title="Golden Amber"></div>
+      <div class="preset-chip" data-color="#ff3344" style="background: #ff3344;" title="Crimson Red"></div>
+      <div class="preset-chip" data-color="#e0e6ed" style="background: #e0e6ed;" title="Ice White"></div>
+    </div>
+
+    <!-- Custom Hex Picker -->
+    <div class="custom-color-row">
+      <div class="color-input-wrapper">
+        <input type="color" id="nativeColorPicker" class="native-color-picker" value="#ff8a3d">
+      </div>
+      <span class="hex-label">HEX</span>
+      <input type="text" id="customHexInput" class="hex-input" value="#FF8A3D" maxlength="7" placeholder="#HEX">
+      <button id="applyCustomColorBtn" class="apply-btn">Apply</button>
+    </div>
+  </section>
+
+  <!-- Mobile Footer & Copyright -->
+  <footer class="mobile-footer">
+    <div class="footer-meta">
+      <span>Media Island Remote</span>
+      <span>•</span>
+      <a href="https://github.com/sayandeep0212/Media-Island" target="_blank" rel="noopener">sayandeep0212</a>
+    </div>
+    <div class="footer-copyright">Copyright &copy; 2026 sayandeep0212. All rights reserved.</div>
+  </footer>
+
+  <!-- Settings & Device Pairing Modal -->
+  <div id="settingsModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">Firebase & Device Pairing</h2>
+        <button id="closeModalBtn" class="close-btn" aria-label="Close Settings">✕</button>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="roomCodeInput">Pairing Code / Room ID</label>
+        <input type="text" id="roomCodeInput" class="form-input" placeholder="e.g. sayan-island or 123456">
+        <div class="form-hint">Enter the same pairing code shown on your Desktop Media Island Settings.</div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="firebaseConfigInput">Firebase Project Config (JSON)</label>
+        <textarea id="firebaseConfigInput" class="form-input form-textarea" placeholder='{"apiKey": "...", "databaseURL": "https://...", "projectId": "..."}'></textarea>
+        <div class="form-hint">Paste your Firebase web config from Firebase Console. This is saved privately on your phone.</div>
+      </div>
+
+      <button id="saveConfigBtn" class="btn-primary">Save & Connect</button>
+
+      <div class="quick-guide">
+        <strong>Quick Firebase Setup:</strong>
+        <ol>
+          <li>Open <a href="https://console.firebase.google.com" target="_blank" style="color: var(--accent);">Firebase Console</a> & create a free project.</li>
+          <li>Click <em>Build &gt; Realtime Database &gt; Create Database</em> (choose test mode).</li>
+          <li>Click <em>Project Settings ⚙️ &gt; General &gt; Add Web App</em>, copy the <code>firebaseConfig</code> object and paste it here and on Desktop.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,20 +1,46 @@
 {
   "name": "media-island",
   "version": "1.0.0",
+  "description": "Dynamic media controller and visualizer for Windows and Mobile, by sayandeep0212",
   "main": "main.js",
+  "author": "sayandeep0212 <https://github.com/sayandeep0212>",
+  "copyright": "Copyright © 2026 sayandeep0212",
+  "homepage": "https://github.com/sayandeep0212/Media-Island",
   "scripts": {
     "start": "electron .",
     "build:win": "electron-builder --win nsis",
     "build:mac": "electron-builder --mac"
   },
-  "dependencies": { "ws": "^8.18.0" },
-  "devDependencies": { "electron": "^33.0.0", "electron-builder": "^25.0.0" },
+  "dependencies": {
+    "firebase": "^13.1.0",
+    "qrcode": "^1.5.4",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  },
   "build": {
-    "appId": "com.mediaisland.app",
+    "appId": "com.sayandeep0212.mediaisland",
     "productName": "Media Island",
-    "directories": { "output": "release" },
-    "files": ["**/*", "!release*/**", "!dist/**", "!builder-debug.yml"],
-    "win": { "target": ["nsis"], "signAndEditExecutable": false },
+    "copyright": "Copyright © 2026 sayandeep0212",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "**/*",
+      "!release*/**",
+      "!dist/**",
+      "!builder-debug.yml",
+      "!.env*"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "icon.png",
+      "signAndEditExecutable": false
+    },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
