@@ -1,5 +1,5 @@
 const { initializeApp, getApps, deleteApp } = require("firebase/app");
-const { getDatabase, ref, set, update, onValue, off } = require("firebase/database");
+const { getDatabase, ref, set, update, onValue, off, onDisconnect } = require("firebase/database");
 
 let appInstance = null;
 let db = null;
@@ -7,6 +7,7 @@ let currentRoom = "";
 let commandListener = null;
 let lastCommandTimestamp = Date.now();
 let lastPushedStateJson = "";
+let heartbeatInterval = null;
 
 let callbacks = {
   onCommand: () => {},
@@ -64,11 +65,23 @@ function setup(firebaseConfig, roomCode) {
       callbacks.onStatusChange("error", error.message);
     });
 
-    // Monitor connection state
+    // Monitor connection state and maintain desktop presence
     const connectedRef = ref(db, ".info/connected");
+    const presenceRef = ref(db, `rooms/${currentRoom}/desktop`);
     onValue(connectedRef, snap => {
       if (snap.val() === true) {
         callbacks.onStatusChange("connected", `Connected to room: ${currentRoom}`);
+        set(presenceRef, { online: true, updatedAt: Date.now(), room: currentRoom }).catch(() => {});
+        try {
+          onDisconnect(presenceRef).set({ online: false, updatedAt: Date.now() });
+        } catch {}
+
+        if (heartbeatInterval) clearInterval(heartbeatInterval);
+        heartbeatInterval = setInterval(() => {
+          if (db && currentRoom) {
+            update(presenceRef, { online: true, updatedAt: Date.now() }).catch(() => {});
+          }
+        }, 15000);
       } else {
         callbacks.onStatusChange("connecting", "Reconnecting to Firebase...");
       }
@@ -113,15 +126,24 @@ function pushState(state) {
 function pushSettings(settings) {
   if (!db || !currentRoom) return;
   const settingsRef = ref(db, `rooms/${currentRoom}/settings`);
-  update(settingsRef, {
+  const payload = {
     accentColor: settings.accentColor || "#ff8a3d",
     updatedAt: Date.now()
-  }).catch(err => {
+  };
+  if (settings.currentSticker) {
+    payload.currentSticker = settings.currentSticker;
+  }
+  update(settingsRef, payload).catch(err => {
     console.error("[FirebaseSync] pushSettings error:", err.message);
   });
 }
 
 function cleanup() {
+  if (heartbeatInterval) {
+    clearInterval(heartbeatInterval);
+    heartbeatInterval = null;
+  }
+
   if (db && currentRoom && commandListener) {
     try {
       const cmdRef = ref(db, `rooms/${currentRoom}/command`);

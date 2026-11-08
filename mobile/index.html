@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="Media Island">
   <title>Media Island Remote</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=2.2.0">
   
   <!-- Firebase Compat SDKs for universal zero-config web & mobile execution -->
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -39,13 +39,43 @@
         <span id="statusText">Connecting</span>
       </div>
       <button id="openScannerBtn" class="icon-btn" aria-label="Scan Desktop QR Code" title="Scan Desktop QR Code">
-        📷
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="10" height="10" rx="1"/></svg>
       </button>
       <button id="settingsBtn" class="icon-btn" aria-label="Settings & Pairing" title="Settings & Pairing">
-        ⚙️
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </button>
     </div>
   </header>
+
+  <!-- Realtime Connection Status Bar -->
+  <div id="connectionBar" class="connection-bar">
+    <div class="room-indicator" id="roomIndicator" title="Click to view pairing details">
+      <span id="roomDot" class="room-dot waiting"></span>
+      <span class="room-label">ROOM:</span>
+      <span id="activeRoomDisplay" class="room-code">island-p6j3fc</span>
+    </div>
+    <div class="quick-bar-actions">
+      <button id="quickScanBtn" class="quick-action-pill" aria-label="Scan Desktop QR Code" title="Scan Desktop QR Code">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="10" height="10" rx="1"/></svg>
+        <span>Scan QR</span>
+      </button>
+      <button id="quickChangeBtn" class="quick-action-pill ghost" aria-label="Pair Room" title="Change Room Code">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+        <span>Change</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Desktop App Offline Guidance Notice -->
+  <div id="desktopOfflineNotice" class="desktop-banner waiting" style="display: none;">
+    <div class="banner-icon-box">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+    </div>
+    <div class="banner-text-box">
+      <div class="banner-title">Desktop App Waiting for Connection</div>
+      <div class="banner-desc">Open <strong>Media Island</strong> on your PC & play music in Chrome.</div>
+    </div>
+  </div>
 
   <!-- Dynamic Island Player Card -->
   <main class="player-card">
@@ -59,7 +89,7 @@
       </div>
       <div class="track-meta">
         <div id="trackTitle" class="track-title">No Media Playing</div>
-        <div id="trackArtist" class="track-artist">Connect your desktop browser</div>
+        <div id="trackArtist" class="track-artist">Open YouTube or Spotify in desktop Chrome</div>
       </div>
       <!-- Waveform Visualizer with dynamic accent color -->
       <div id="wave" class="wave-visualizer" aria-hidden="true">
@@ -114,11 +144,11 @@
     <!-- Sticker Mode Controls -->
     <div class="sticker-mode-bar">
       <button id="stickerAutoBtn" class="sticker-mode-btn active" title="Automatically cycles stickers every 30 seconds">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
         <span>Auto-Rotate (30s)</span>
       </button>
       <button id="stickerRandomBtn" class="sticker-mode-btn" title="Pick a random sticker right now">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M10.59 9.17 5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>
         <span>Surprise Me</span>
       </button>
     </div>
@@ -179,7 +209,8 @@
       </div>
 
       <button id="openScannerFromModalBtn" class="btn-primary" style="margin-top: 0; margin-bottom: 14px; background: rgba(255, 255, 255, 0.08); color: var(--text-primary); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; gap: 8px;">
-        <span style="font-size: 16px;">📷</span> Scan Desktop QR Code
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="10" height="10" rx="1"/></svg>
+        <span>Scan Desktop QR Code</span>
       </button>
       <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px; font-size: 11px; color: var(--text-muted);">
         <span style="flex: 1; height: 1px; background: var(--border);"></span>
@@ -189,7 +220,7 @@
 
       <div class="form-group">
         <label class="form-label" for="roomCodeInput">Pairing Code / Room ID</label>
-        <input type="text" id="roomCodeInput" class="form-input" placeholder="e.g. island-8x29a">
+        <input type="text" id="roomCodeInput" class="form-input" placeholder="e.g. island-p6j3fc">
         <div class="form-hint">Enter the Room ID displayed in your Desktop Media Island Settings or scan the QR code.</div>
       </div>
 
@@ -233,7 +264,7 @@
     </div>
   </div>
 
-  <script src="stickers-data.js"></script>
-  <script src="app.js"></script>
+  <script src="stickers-data.js?v=2.2.0"></script>
+  <script src="app.js?v=2.2.0"></script>
 </body>
 </html>

@@ -25,6 +25,12 @@
   // Elements
   const statusBadge = $("statusBadge");
   const statusText = $("statusText");
+  const activeRoomDisplay = $("activeRoomDisplay");
+  const roomIndicator = $("roomIndicator");
+  const roomDot = $("roomDot");
+  const quickScanBtn = $("quickScanBtn");
+  const quickChangeBtn = $("quickChangeBtn");
+  const desktopOfflineNotice = $("desktopOfflineNotice");
   const islandPill = $("islandPill");
   const artWrap = $("artWrap");
   const sourceIcon = $("sourceIcon");
@@ -258,6 +264,8 @@
   // ----------------------------------------------------
   // Dynamic Island Stickers Studio (stick-it-up pack)
   // ----------------------------------------------------
+  let stickerInitRetries = 0;
+
   function getStickersList() {
     return Array.isArray(window.ISLAND_STICKERS) ? window.ISLAND_STICKERS : [];
   }
@@ -265,7 +273,13 @@
   function initStickersStudio() {
     if (!mobileStickerGrid) return;
     const list = getStickersList();
-    if (!list.length) return;
+    if (!list.length) {
+      if (stickerInitRetries < 25) {
+        stickerInitRetries++;
+        setTimeout(initStickersStudio, 120);
+      }
+      return;
+    }
 
     mobileStickerGrid.innerHTML = list.map(s => `
       <div class="sticker-card" data-id="${s.id}" role="button" tabindex="0" title="${s.name} Sticker">
@@ -394,6 +408,9 @@
 
     roomCode = newRoom;
     localStorage.setItem("media_island_room", roomCode);
+    if (activeRoomDisplay) {
+      activeRoomDisplay.textContent = roomCode;
+    }
     settingsModal.classList.remove("open");
     connect();
   });
@@ -408,18 +425,43 @@
       localStorage.setItem("media_island_room", roomCode);
     } else {
       const storedRoom = localStorage.getItem("media_island_room");
-      if (storedRoom && storedRoom !== "sayan-island") {
-        roomCode = storedRoom;
+      if (storedRoom && storedRoom !== "sayan-island" && storedRoom.trim()) {
+        roomCode = storedRoom.trim();
       } else {
-        roomCode = "";
+        // Fallback default: island-p6j3fc (user's desktop room)
+        roomCode = "island-p6j3fc";
+        localStorage.setItem("media_island_room", roomCode);
       }
+    }
+
+    if (activeRoomDisplay) {
+      activeRoomDisplay.textContent = roomCode;
     }
 
     firebaseConfig = DEFAULT_FIREBASE_CONFIG;
   }
 
+  // Update Desktop Connection Indicator
+  function updateDesktopStatus(isOnline) {
+    if (roomDot) {
+      roomDot.className = isOnline ? "room-dot online" : "room-dot waiting";
+    }
+    if (desktopOfflineNotice) {
+      desktopOfflineNotice.style.display = isOnline ? "none" : "flex";
+    }
+    if (isOnline) {
+      setStatus("connected", "Desktop Connected");
+    } else {
+      setStatus("connecting", "Waiting for PC");
+    }
+  }
+
   // Connect to Firebase and Local WebSocket
   function connect() {
+    if (activeRoomDisplay) {
+      activeRoomDisplay.textContent = roomCode;
+    }
+
     if (!roomCode) {
       setStatus("connecting", "Pairing Required");
       settingsModal.classList.add("open");
@@ -436,11 +478,22 @@
         }
         db = firebase.database();
 
+        // Listen for desktop online presence
+        const desktopRef = db.ref(`rooms/${roomCode}/desktop`);
+        desktopRef.on("value", snapshot => {
+          const val = snapshot.val();
+          const isOnline = !!(val && val.online);
+          const isRecent = val && val.updatedAt && (Date.now() - val.updatedAt < 90000);
+          updateDesktopStatus(isOnline || isRecent);
+        });
+
         // Listen for desktop playback state
         const stateRef = db.ref(`rooms/${roomCode}/state`);
         stateRef.on("value", snapshot => {
-          setStatus("connected", "Online (Cloud)");
           const state = snapshot.val();
+          if (state && (state.title || state.playing)) {
+            updateDesktopStatus(true);
+          }
           updateMediaState(state);
         }, err => {
           console.error("Firebase state read error:", err);
@@ -459,10 +512,9 @@
 
         // Realtime connection indicator
         db.ref(".info/connected").on("value", snap => {
-          if (snap.val() === true) {
-            setStatus("connected", "Online (Cloud)");
-          } else {
+          if (snap.val() !== true) {
             setStatus("connecting", "Reconnecting...");
+            if (roomDot) roomDot.className = "room-dot offline";
           }
         });
 
@@ -622,9 +674,24 @@
   if (openScannerFromModalBtn) openScannerFromModalBtn.addEventListener("click", startScanner);
   if (closeScannerBtn) closeScannerBtn.addEventListener("click", stopScanner);
 
+  if (quickScanBtn) quickScanBtn.addEventListener("click", startScanner);
+  if (quickChangeBtn) {
+    quickChangeBtn.addEventListener("click", () => {
+      roomCodeInput.value = roomCode || "";
+      settingsModal.classList.add("open");
+    });
+  }
+  if (roomIndicator) {
+    roomIndicator.addEventListener("click", () => {
+      roomCodeInput.value = roomCode || "";
+      settingsModal.classList.add("open");
+    });
+  }
+
   // Initialize
   initStickersStudio();
   loadConfigFromUrlOrStorage().then(() => {
     connect();
+  });
   });
 })();
