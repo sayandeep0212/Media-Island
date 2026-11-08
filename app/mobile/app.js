@@ -693,5 +693,4 @@
   loadConfigFromUrlOrStorage().then(() => {
     connect();
   });
-  });
 })();
