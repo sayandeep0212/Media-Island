@@ -6,6 +6,7 @@ app/node_modules/
 app/release/*
 !app/release/*.exe
 !app/release/*.blockmap
+*.zip
 app/dist/
 app/builder-debug.yml
 

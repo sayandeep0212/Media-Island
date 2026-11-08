@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  validate:
+    name: Code & Syntax Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install root dependencies
+        run: npm ci || npm install
+
+      - name: Validate JavaScript Syntax
+        run: |
+          node -c app/main.js
+          node -c app/preload.js
+          node -c app/stickers.js
+          node -c app/firebase-sync.js
+          node -c mobile/app.js
+          node -c mobile/stickers-data.js
+          node -c extension/background.js
+          node -c extension/content.js
+
+      - name: Verify Stickers Generator
+        run: node scripts/generate-stickers.js
+
+  build-windows:
+    name: Build Windows Application
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Sync Mobile Assets
+        shell: pwsh
+        run: |
+          if (-not (Test-Path app/mobile)) {
+            Copy-Item -Recurse -Force mobile app/mobile
+          }
+
+      - name: Install App Dependencies
+        working-directory: ./app
+        run: npm ci || npm install
+
+      - name: Build Windows Installer
+        working-directory: ./app
+        run: npm run build:win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: media-island-windows-build
+          path: app/release/*.exe
+          retention-days: 7
+

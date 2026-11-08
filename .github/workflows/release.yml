@@ -1,0 +1,85 @@
+name: Release CI/CD
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release Tag (e.g. v1.1.0)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build & Publish Release
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install root dependencies & build stickers
+        shell: pwsh
+        run: |
+          npm ci || npm install
+          npm run generate-stickers
+
+      - name: Sync Mobile Remote Assets to App
+        shell: pwsh
+        run: |
+          Copy-Item -Recurse -Force mobile app/mobile
+
+      - name: Package Chrome Extension
+        shell: pwsh
+        run: |
+          tar -a -c -f media-island-extension.zip -C extension .
+
+      - name: Install App Dependencies
+        working-directory: ./app
+        run: npm ci || npm install
+
+      - name: Build Windows Installer
+        working-directory: ./app
+        run: npm run build:win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine Tag Name
+        id: vars
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          if ("${{ github.event.inputs.tag_name }}" -ne "") {
+            $tag = "${{ github.event.inputs.tag_name }}"
+          }
+          if ($tag -eq "" -or $tag -eq "main" -or $tag -eq "master") {
+            $tag = "v1.1.0"
+          }
+          Write-Output "tag=$tag" >> $env:GITHUB_OUTPUT
+
+      - name: Create GitHub Release & Upload Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.vars.outputs.tag }}
+          name: Media Island ${{ steps.vars.outputs.tag }} – Dynamic Island & Mobile Remote
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            app/release/*.exe
+            app/release/*.blockmap
+            media-island-extension.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

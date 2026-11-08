@@ -1,6 +1,10 @@
 {
+  "name": "media-island-root",
+  "private": true,
   "scripts": {
-    "generate-stickers": "node scripts/generate-stickers.js"
+    "generate-stickers": "node scripts/generate-stickers.js",
+    "build:win": "node scripts/generate-stickers.js && npm --prefix app run build:win",
+    "start": "npm --prefix app start"
   },
   "dependencies": {
     "stick-it-up": "^0.3.0"
