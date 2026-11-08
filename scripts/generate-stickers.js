@@ -170,7 +170,7 @@ const fileContent = `/**
     if (idx !== -1) {
       currentIndex = idx;
       applySticker(STICKERS[idx]);
-      resetAutoChange();
+      if (intervalTimer) clearInterval(intervalTimer);
     }
   };
 })();
@@ -188,5 +188,9 @@ const mobileStickersData = `/**
 window.ISLAND_STICKERS = ${JSON.stringify(renderedStickers, null, 2)};
 `;
 fs.writeFileSync(path.join(__dirname, '..', 'mobile', 'stickers-data.js'), mobileStickersData, 'utf8');
+const appMobileDir = path.join(__dirname, '..', 'app', 'mobile');
+if (fs.existsSync(appMobileDir)) {
+  fs.writeFileSync(path.join(appMobileDir, 'stickers-data.js'), mobileStickersData, 'utf8');
+}
 
 console.log('Successfully updated stickers for Desktop (app/stickers.js) and Mobile (mobile/stickers-data.js)!');

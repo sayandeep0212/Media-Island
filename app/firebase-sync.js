@@ -5,7 +5,10 @@ let appInstance = null;
 let db = null;
 let currentRoom = "";
 let commandListener = null;
-let lastCommandTimestamp = Date.now();
+let settingsListener = null;
+let lastProcessedCmdId = null;
+let isInitialCommandSnapshot = true;
+let lastSyncedSticker = null;
 let lastPushedStateJson = "";
 let heartbeatInterval = null;
 
@@ -44,14 +47,24 @@ function setup(firebaseConfig, roomCode) {
     callbacks.onStatusChange("connecting", `Connecting to room: ${currentRoom}...`);
 
     // Listen for incoming commands from mobile
+    isInitialCommandSnapshot = true;
+    lastProcessedCmdId = null;
     const cmdRef = ref(db, `rooms/${currentRoom}/command`);
     commandListener = onValue(cmdRef, snapshot => {
       const data = snapshot.val();
       if (!data || !data.cmd) return;
 
-      // Ignore stale commands sent before connection or already processed
-      if (data.ts && data.ts <= lastCommandTimestamp) return;
-      if (data.ts) lastCommandTimestamp = data.ts;
+      const cmdId = data.id || `${data.cmd}_${data.value || ""}_${data.ts || ""}`;
+      if (isInitialCommandSnapshot) {
+        isInitialCommandSnapshot = false;
+        lastProcessedCmdId = cmdId;
+        return;
+      }
+
+      if (cmdId === lastProcessedCmdId) return;
+      lastProcessedCmdId = cmdId;
+
+      console.log(`[FirebaseSync] Received command:`, data.cmd, data.value);
 
       if (data.cmd === "setAccentColor" && data.value) {
         callbacks.onSetAccentColor(data.value);
@@ -63,6 +76,25 @@ function setup(firebaseConfig, roomCode) {
     }, error => {
       console.error("[FirebaseSync] Command listen error:", error);
       callbacks.onStatusChange("error", error.message);
+    });
+
+    // Also listen for settings changes (stickers & accent color) from mobile
+    let isInitialSettingsSnapshot = true;
+    const settingsRef = ref(db, `rooms/${currentRoom}/settings`);
+    settingsListener = onValue(settingsRef, snapshot => {
+      const data = snapshot.val();
+      if (!data) return;
+
+      if (isInitialSettingsSnapshot) {
+        isInitialSettingsSnapshot = false;
+        if (data.currentSticker) lastSyncedSticker = data.currentSticker;
+        return;
+      }
+
+      if (data.currentSticker && data.currentSticker !== lastSyncedSticker) {
+        lastSyncedSticker = data.currentSticker;
+        callbacks.onSetSticker(data.currentSticker);
+      }
     });
 
     // Monitor connection state and maintain desktop presence
@@ -150,6 +182,14 @@ function cleanup() {
       off(cmdRef);
     } catch {}
     commandListener = null;
+  }
+
+  if (db && currentRoom && settingsListener) {
+    try {
+      const settingsRef = ref(db, `rooms/${currentRoom}/settings`);
+      off(settingsRef);
+    } catch {}
+    settingsListener = null;
   }
 
   if (appInstance) {

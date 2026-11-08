@@ -32,6 +32,13 @@
     "directories": {
       "output": "release"
     },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "sayandeep0212",
+        "repo": "Media-Island"
+      }
+    ],
     "files": [
       "**/*",
       "!release*/**",

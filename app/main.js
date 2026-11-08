@@ -220,6 +220,8 @@ function applyAccentColor(color) {
 }
 
 function applySticker(stickerId) {
+  settings.currentSticker = stickerId;
+  saveSettings();
   if (win && !win.isDestroyed()) {
     win.webContents.send("select-sticker", stickerId);
   }

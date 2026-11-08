@@ -196,7 +196,13 @@
   // Send Command to Desktop
   function sendCommand(cmd, value = null) {
     vibrate(20);
-    const payload = { cmd, value, ts: Date.now(), source: "mobile" };
+    const payload = {
+      cmd,
+      value,
+      ts: Date.now(),
+      id: `${cmd}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      source: "mobile"
+    };
 
     // 1. Send via Firebase
     if (db && roomCode) {
@@ -273,30 +279,33 @@
   function initStickersStudio() {
     if (!mobileStickerGrid) return;
     const list = getStickersList();
-    if (!list.length) {
-      if (stickerInitRetries < 25) {
-        stickerInitRetries++;
-        setTimeout(initStickersStudio, 120);
+    if (list.length) {
+      if (!mobileStickerGrid.children.length) {
+        mobileStickerGrid.innerHTML = list.map(s => `
+          <div class="sticker-card" data-id="${s.id}" role="button" tabindex="0" title="${s.name} Sticker">
+            <span class="sticker-badge">✓</span>
+            <div class="sticker-img-wrap">${s.svg}</div>
+            <span class="sticker-name">${s.name}</span>
+          </div>
+        `).join("");
       }
-      return;
+      if (mobileStickerBox && list[0] && !mobileStickerBox.innerHTML.trim()) {
+        mobileStickerBox.innerHTML = list[0].svg;
+      }
+    } else {
+      if (stickerInitRetries < 50) {
+        stickerInitRetries++;
+        setTimeout(initStickersStudio, 150);
+      }
     }
 
-    mobileStickerGrid.innerHTML = list.map(s => `
-      <div class="sticker-card" data-id="${s.id}" role="button" tabindex="0" title="${s.name} Sticker">
-        <span class="sticker-badge">✓</span>
-        <div class="sticker-img-wrap">${s.svg}</div>
-        <span class="sticker-name">${s.name}</span>
-      </div>
-    `).join("");
-
-    // Set initial sticker preview in island pill
-    if (mobileStickerBox && list[0]) {
-      mobileStickerBox.innerHTML = list[0].svg;
+    if (mobileStickerBox && !mobileStickerBox.innerHTML.trim()) {
+      const firstSvg = mobileStickerGrid.querySelector(".sticker-card .sticker-img-wrap");
+      if (firstSvg) mobileStickerBox.innerHTML = firstSvg.innerHTML;
     }
   }
 
   function applyStickerUI(stickerId) {
-    const list = getStickersList();
     if (stickerId === "auto") {
       currentStickerId = "auto";
       if (activeStickerLabel) activeStickerLabel.textContent = "Auto (30s)";
@@ -305,23 +314,37 @@
       return;
     }
 
-    const found = list.find(s => s.id === stickerId);
-    if (!found) return;
-
     currentStickerId = stickerId;
-    if (activeStickerLabel) activeStickerLabel.textContent = found.name;
     if (stickerAutoBtn) stickerAutoBtn.classList.remove("active");
+
+    const card = document.querySelector(`.sticker-card[data-id="${stickerId}"]`);
+    if (card) {
+      const nameEl = card.querySelector(".sticker-name");
+      if (activeStickerLabel && nameEl) activeStickerLabel.textContent = nameEl.textContent;
+      const svgEl = card.querySelector(".sticker-img-wrap");
+      if (mobileStickerBox && svgEl) {
+        mobileStickerBox.innerHTML = svgEl.innerHTML;
+        mobileStickerBox.classList.remove("slap");
+        void mobileStickerBox.offsetWidth;
+        mobileStickerBox.classList.add("slap");
+      }
+    } else {
+      const list = getStickersList();
+      const found = list.find(s => s.id === stickerId);
+      if (found) {
+        if (activeStickerLabel) activeStickerLabel.textContent = found.name;
+        if (mobileStickerBox) {
+          mobileStickerBox.innerHTML = found.svg;
+          mobileStickerBox.classList.remove("slap");
+          void mobileStickerBox.offsetWidth;
+          mobileStickerBox.classList.add("slap");
+        }
+      }
+    }
 
     document.querySelectorAll(".sticker-card").forEach(c => {
       c.classList.toggle("active", c.dataset.id === stickerId);
     });
-
-    if (mobileStickerBox) {
-      mobileStickerBox.innerHTML = found.svg;
-      mobileStickerBox.classList.remove("slap");
-      void mobileStickerBox.offsetWidth; // Force CSS reflow for slap animation
-      mobileStickerBox.classList.add("slap");
-    }
   }
 
   function chooseSticker(stickerId, isUserAction = true) {
@@ -366,12 +389,14 @@
 
   if (stickerRandomBtn) {
     stickerRandomBtn.addEventListener("click", () => {
-      const list = getStickersList();
-      if (!list.length) return;
-      const filtered = list.filter(s => s.id !== currentStickerId);
-      const pool = filtered.length ? filtered : list;
-      const pick = pool[Math.floor(Math.random() * pool.length)];
-      chooseSticker(pick.id, true);
+      const cards = Array.from(document.querySelectorAll(".sticker-card"));
+      if (cards.length) {
+        const pool = cards.filter(c => c.dataset.id !== currentStickerId);
+        const chosen = (pool.length ? pool : cards)[Math.floor(Math.random() * (pool.length || cards.length))];
+        if (chosen && chosen.dataset.id) {
+          chooseSticker(chosen.dataset.id, true);
+        }
+      }
     });
   }
 

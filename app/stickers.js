@@ -182,7 +182,7 @@
     if (idx !== -1) {
       currentIndex = idx;
       applySticker(STICKERS[idx]);
-      resetAutoChange();
+      if (intervalTimer) clearInterval(intervalTimer);
     }
   };
 })();
