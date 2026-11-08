@@ -14,6 +14,7 @@
   "dependencies": {
     "firebase": "^13.1.0",
     "qrcode": "^1.5.4",
+    "stick-it-up": "^0.3.0",
     "ws": "^8.18.0"
   },
   "devDependencies": {

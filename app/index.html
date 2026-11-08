@@ -17,22 +17,54 @@
   #pill { cursor: grab; }
   #pill.dragging { cursor: grabbing; }
   #pill.open { width: 520px; height: 154px; border-radius: 48px; padding: 14px 22px; flex-direction: column; align-items: stretch; }
-  #topline { display: flex; align-items: center; min-height: 52px; }
+  #topline { display: flex; align-items: center; width: 100%; min-height: 32px; box-sizing: border-box; }
+  #pill.open #topline { min-height: 54px; }
   #art { position: relative; width: 30px; height: 30px; border-radius: 9px; background: #222 center/cover; flex: none; transition: all .35s; }
   #pill.open #art { width: 54px; height: 54px; border-radius: 15px; }
   #source-badge { position: absolute; right: -5px; bottom: -5px; width: 17px; height: 17px; box-sizing: border-box; overflow: hidden; display: grid; place-items: center; border: 2px solid #000; border-radius: 50%; background: #333; color: #fff; font-size: 9px; font-weight: 700; }
   #source-icon { width: 100%; height: 100%; object-fit: cover; }
   #source-fallback { display: none; text-transform: uppercase; }
-  #info { flex: 1; min-width: 0; margin: 0 12px; opacity: 0; width: 0; transition: opacity .25s; }
-  #pill.open #info { opacity: 1; width: auto; }
+  #info { display: none; min-width: 0; margin: 0 12px; opacity: 0; width: 0; transition: opacity .25s; }
+  #pill.open #info { display: block; flex: 1; opacity: 1; width: auto; }
   #title { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #artist { font-size: 13px; color: #9a9a9a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 3px; }
-  #wave { display: flex; align-items: center; gap: 3px; height: 22px; flex: none; }
+  #wave { display: flex; align-items: center; gap: 3px; height: 22px; flex: none; margin-left: 10px; }
+  #pill.open #wave { margin-left: 0; }
   #wave i { display: block; width: 3px; border-radius: 3px; background: var(--accent); height: 6px; }
   #pill.playing #wave i { animation: bar .9s ease-in-out infinite; }
   #wave i:nth-child(1) { animation-delay: -.7s } #wave i:nth-child(2) { animation-delay: -.3s }
   #wave i:nth-child(3) { animation-delay: -.5s } #wave i:nth-child(4) { animation-delay: -.1s }
   #wave i:nth-child(5) { animation-delay: -.6s }
+  #sticker-box {
+    width: 28px; height: 28px; flex: none; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; margin-left: auto; position: relative; user-select: none; -webkit-user-drag: none;
+    perspective: 600px;
+  }
+  #pill.open #sticker-box { margin-left: 12px; }
+  #sticker-box svg {
+    width: 100% !important; height: 100% !important; display: block !important;
+    transform-origin: center center !important;
+    transform: var(--sticker-offset, translate(0, 0)) var(--sticker-tilt, rotate(0deg)) perspective(600px) rotateX(0deg) rotateY(0deg) translateY(0) scale(1);
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.35));
+    transition: transform 350ms cubic-bezier(0.34, 1.56, 0.64, 1), filter 350ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    pointer-events: auto;
+  }
+  #sticker-box:hover svg {
+    transform: var(--sticker-offset, translate(0, 0)) var(--sticker-tilt, rotate(0deg)) perspective(600px) rotateX(12deg) rotateY(-12deg) translateY(-3px) scale(1.15);
+    filter: drop-shadow(0 10px 14px rgba(0,0,0,0.6));
+  }
+  #sticker-box:active svg {
+    transform: var(--sticker-offset, translate(0, 0)) var(--sticker-tilt, rotate(0deg)) scale(0.92);
+    transition: transform 100ms ease;
+  }
+  @keyframes stickerSlap {
+    0% { transform: scale(0.4) rotate(-15deg); opacity: 0; }
+    60% { transform: scale(1.18) rotate(5deg); opacity: 1; }
+    100% { transform: scale(1) rotate(0deg); opacity: 1; }
+  }
+  .sticker-slap svg {
+    animation: stickerSlap 380ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
   #phone-btn { display: none; width: 28px; height: 28px; margin-left: 10px; border: 0; border-radius: 50%; background: #242424; color: #aaa; font-size: 13px; line-height: 1; cursor: pointer; align-items: center; justify-content: center; }
   #pill.open #phone-btn { display: flex; }
   #phone-btn:hover { color: #fff; background: #444; }
@@ -66,6 +98,7 @@
         <div id="artist"></div>
       </div>
       <div id="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+      <div id="sticker-box" class="sticker-peel" role="button" tabindex="0" title="Click to change sticker"></div>
       <button id="phone-btn" aria-label="Phone Remote & QR Pairing" title="Show Phone Remote QR Code">📱</button>
       <button id="close" aria-label="Close Media Island" title="Close Media Island">×</button>
     </div>
@@ -106,6 +139,7 @@
     if (track !== currentTrack) {
       currentTrack = track;
       if (track !== dismissedTrack) dismissedTrack = "";
+      if (window.changeIslandSticker) window.changeIslandSticker();
     }
     pill.classList.toggle("show", track !== dismissedTrack);
     pill.classList.toggle("playing", !!s.playing);
@@ -138,7 +172,7 @@
     if (!dragging) { pill.classList.remove("open"); window.island.interactive(false); }
   });
   pill.addEventListener("pointerdown", event => {
-    if (event.target.closest("button, input")) return;
+    if (event.target.closest("button, input, #sticker-box")) return;
     dragging = true;
     pill.classList.add("dragging");
     pill.setPointerCapture(event.pointerId);
@@ -177,5 +211,6 @@
     $("remaining").textContent = `-${formatTime(Math.max(0, duration - current))}`;
   });
 </script>
+<script src="stickers.js"></script>
 </body>
 </html>

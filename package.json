@@ -1,0 +1,8 @@
+{
+  "scripts": {
+    "generate-stickers": "node scripts/generate-stickers.js"
+  },
+  "dependencies": {
+    "stick-it-up": "^0.3.0"
+  }
+}
