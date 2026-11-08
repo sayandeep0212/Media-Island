@@ -9,7 +9,110 @@
   <meta name="apple-mobile-web-app-title" content="Media Island">
   <title>Media Island Remote</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="style.css?v=2.3.0">
+  <link rel="stylesheet" href="style.css?v=2.4.0">
+  
+  <style>
+    /* Critical Mobile Sticker Studio Styles */
+    .stickers-studio {
+      margin-top: 20px;
+      background: rgba(22, 22, 29, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      padding: 16px 14px;
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+    }
+    .sticker-mode-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 4px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .sticker-mode-btn {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px 8px;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      color: rgba(255, 255, 255, 0.65);
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    .sticker-mode-btn.active {
+      background: rgba(255, 255, 255, 0.14);
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.15);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+    .stickers-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+    @media (min-width: 480px) {
+      .stickers-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+    }
+    .sticker-card {
+      min-height: 98px;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1.5px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 10px 6px 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      position: relative;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    .sticker-card:active {
+      transform: scale(0.93);
+    }
+    .sticker-card.active {
+      border-color: var(--accent, #ff2a6d);
+      background: rgba(255, 255, 255, 0.08);
+      box-shadow: 0 0 16px rgba(255, 42, 109, 0.3);
+    }
+    .sticker-img-wrap {
+      width: clamp(46px, 13vw, 58px);
+      height: clamp(46px, 13vw, 58px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 6px;
+    }
+    .sticker-img-wrap svg {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+  </style>
+  <script>
+    // Invalidate stale PWA service workers and disk caches
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()));
+    }
+    if ('caches' in window) {
+      caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
+    }
+  </script>
   
   <!-- Firebase Compat SDKs for universal zero-config web & mobile execution -->
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -264,7 +367,7 @@
     </div>
   </div>
 
-  <script src="stickers-data.js?v=2.3.0"></script>
-  <script src="app.js?v=2.3.0"></script>
+  <script src="stickers-data.js?v=2.4.0"></script>
+  <script src="app.js?v=2.4.0"></script>
 </body>
 </html>
