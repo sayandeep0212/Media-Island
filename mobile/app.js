@@ -47,6 +47,9 @@
   const applyCustomColorBtn = $("applyCustomColorBtn");
   const colorPresets = $("colorPresets");
 
+  const ICON_PLAY = '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 6.82v10.36c0 .79.87 1.27 1.54.84l8.14-5.18c.62-.39.62-1.29 0-1.69L9.54 5.98C8.87 5.55 8 6.03 8 6.82z"/></svg>';
+  const ICON_PAUSE = '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 6c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1s1-.45 1-1V7c0-.55-.45-1-1-1zm8 0c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1s1-.45 1-1V7c0-.55-.45-1-1-1z"/></svg>';
+
   // Modal elements
   const settingsBtn = $("settingsBtn");
   const settingsModal = $("settingsModal");
@@ -119,7 +122,7 @@
       artWrap.style.backgroundImage = "none";
       artWrap.classList.remove("playing");
       wave.classList.remove("playing");
-      playPauseBtn.textContent = "▶";
+      playPauseBtn.innerHTML = ICON_PLAY;
       seekSlider.value = 0;
       seekSlider.style.setProperty("--progress", "0%");
       elapsedTime.textContent = "0:00";
@@ -156,7 +159,7 @@
     const isPlaying = !!state.playing;
     artWrap.classList.toggle("playing", isPlaying);
     wave.classList.toggle("playing", isPlaying);
-    playPauseBtn.textContent = isPlaying ? "⏸" : "▶";
+    playPauseBtn.innerHTML = isPlaying ? ICON_PAUSE : ICON_PLAY;
 
     // Progress
     currentDuration = Number.isFinite(state.duration) ? state.duration : 0;

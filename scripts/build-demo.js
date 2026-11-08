@@ -186,16 +186,19 @@ const demoHtml = `<!DOCTYPE html>
       margin-left: 10px;
       border: 0;
       border-radius: 50%;
-      background: #242424;
-      color: #aaa;
-      font-size: 13px;
-      line-height: 1;
+      background: #222;
+      color: #a5a5a5;
       cursor: pointer;
       align-items: center;
       justify-content: center;
+      transition: all 0.2s;
     }
     #demo-pill.open #phone-btn {
       display: flex;
+    }
+    #phone-btn:hover {
+      color: #fff;
+      background: #383838;
     }
     #close {
       display: none;
@@ -204,14 +207,19 @@ const demoHtml = `<!DOCTYPE html>
       margin-left: 6px;
       border: 0;
       border-radius: 50%;
-      background: #242424;
-      color: #aaa;
-      font-size: 19px;
-      line-height: 1;
+      background: #222;
+      color: #a5a5a5;
       cursor: pointer;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
     }
     #demo-pill.open #close {
-      display: block;
+      display: flex;
+    }
+    #close:hover {
+      color: #fff;
+      background: #383838;
     }
     #progress-row {
       display: none;
@@ -234,7 +242,7 @@ const demoHtml = `<!DOCTYPE html>
       display: none;
       justify-content: center;
       align-items: center;
-      gap: 28px;
+      gap: 26px;
       margin-top: 6px;
     }
     #demo-pill.open #ctrls {
@@ -244,8 +252,30 @@ const demoHtml = `<!DOCTYPE html>
       background: none;
       border: 0;
       color: #fff;
-      font-size: 20px;
       cursor: pointer;
+      padding: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: transform 0.15s ease, color 0.15s ease, background 0.15s ease;
+    }
+    #ctrls button:hover {
+      color: var(--accent);
+      transform: scale(1.15);
+    }
+    #ctrls button:active {
+      transform: scale(0.92);
+    }
+    #ctrls #demo-pp {
+      width: 38px;
+      height: 38px;
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 50%;
+    }
+    #ctrls #demo-pp:hover {
+      background: rgba(255, 255, 255, 0.22);
+      color: #fff;
     }
 
     @keyframes bar {
@@ -312,8 +342,12 @@ const demoHtml = `<!DOCTYPE html>
           <!-- Red marker comparison overlay -->
           <div id="guide-box" class="red-guide"></div>
 
-          <button id="phone-btn">📱</button>
-          <button id="close">×</button>
+          <button id="phone-btn" title="Show Phone Remote QR Code">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 14h3v3h-3z"/><path d="M20 14v.01"/><path d="M14 20v.01"/><path d="M17 17v3"/><path d="M20 17v3"/></svg>
+          </button>
+          <button id="close" title="Close Media Island">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
         </div>
 
         <div id="progress-row">
@@ -323,9 +357,15 @@ const demoHtml = `<!DOCTYPE html>
         </div>
 
         <div id="ctrls">
-          <button>⏮</button>
-          <button style="font-size: 23px;">⏸</button>
-          <button>⏭</button>
+          <button id="demo-prev" title="Previous">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M7 6c.55 0 1 .45 1 1v10c0 .55-.45 1-1 1s-1-.45-1-1V7c0-.55.45-1 1-1zm3.66 6.82 7.04 4.88c.67.46 1.58-.02 1.58-.82V7.12c0-.8-.91-1.28-1.58-.82l-7.04 4.88c-.46.32-.46 1 0 1.64z"/></svg>
+          </button>
+          <button id="demo-pp" title="Play or pause">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 6c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1s1-.45 1-1V7c0-.55-.45-1-1-1zm8 0c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1s1-.45 1-1V7c0-.55-.45-1-1-1z"/></svg>
+          </button>
+          <button id="demo-next" title="Next">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M17 6c.55 0 1 .45 1 1v10c0 .55-.45 1-1 1s-1-.45-1-1V7c0-.55.45-1 1-1zM5.72 6.3c-.67-.46-1.58.02-1.58.82v9.76c0 .8.91 1.28 1.58.82l7.04-4.88c.46-.32.46-1 0-1.64L5.72 6.3z"/></svg>
+          </button>
         </div>
       </div>
 
