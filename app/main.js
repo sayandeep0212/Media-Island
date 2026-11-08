@@ -219,6 +219,16 @@ function applyAccentColor(color) {
   firebaseSync.pushSettings(settings);
 }
 
+function applySticker(stickerId) {
+  if (win && !win.isDestroyed()) {
+    win.webContents.send("select-sticker", stickerId);
+  }
+  const payload = JSON.stringify({ type: "sticker", value: stickerId });
+  for (const c of clients) {
+    if (c.readyState === 1) c.send(payload);
+  }
+}
+
 function startServer() {
   const localMobileDir = path.join(__dirname, "mobile");
   const parentMobileDir = path.join(__dirname, "..", "mobile");
@@ -290,6 +300,8 @@ function startServer() {
         if (m.type === "cmd") {
           if (m.cmd === "setAccentColor" && m.value) {
             applyAccentColor(m.value);
+          } else if (m.cmd === "setSticker" && m.value) {
+            applySticker(m.value);
           } else {
             broadcastCommand(m.cmd, m.value);
           }
@@ -419,6 +431,7 @@ app.whenReady().then(() => {
   firebaseSync.init(settings.firebaseConfig, settings.roomCode, {
     onCommand: (cmd, value) => broadcastCommand(cmd, value),
     onSetAccentColor: color => applyAccentColor(color),
+    onSetSticker: stickerId => applySticker(stickerId),
     onStatusChange: (status, message) => {
       currentRemoteStatus = { status, message };
       if (settingsWin && !settingsWin.isDestroyed()) {

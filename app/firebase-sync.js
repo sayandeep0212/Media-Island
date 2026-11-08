@@ -11,6 +11,7 @@ let lastPushedStateJson = "";
 let callbacks = {
   onCommand: () => {},
   onSetAccentColor: () => {},
+  onSetSticker: () => {},
   onStatusChange: () => {}
 };
 
@@ -53,6 +54,8 @@ function setup(firebaseConfig, roomCode) {
 
       if (data.cmd === "setAccentColor" && data.value) {
         callbacks.onSetAccentColor(data.value);
+      } else if (data.cmd === "setSticker" && data.value) {
+        callbacks.onSetSticker(data.value);
       } else {
         callbacks.onCommand(data.cmd, data.value);
       }

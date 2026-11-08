@@ -13,5 +13,6 @@ contextBridge.exposeInMainWorld("island", {
   drag: (phase, screenX, screenY) => ipcRenderer.send("drag", { phase, screenX, screenY }),
   interactive: on => ipcRenderer.send("interactive", on),
   openSettings: tab => ipcRenderer.send("openSettings", tab),
-  onSwitchTab: cb => ipcRenderer.on("switch-tab", (_e, tab) => cb(tab))
+  onSwitchTab: cb => ipcRenderer.on("switch-tab", (_e, tab) => cb(tab)),
+  onSelectSticker: cb => ipcRenderer.on("select-sticker", (_e, id) => cb(id))
 });

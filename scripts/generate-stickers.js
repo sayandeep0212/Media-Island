@@ -58,7 +58,8 @@ const fileContent = `/**
  * - NoriHeadphonesSticker
  *
  * Provides responsive sizing, random placement & tilt,
- * 30-second automatic stay interval, and the authentic stick-it-up 3D vinyl peel effect.
+ * 30-second automatic stay interval, manual selection hook,
+ * and the authentic stick-it-up 3D vinyl peel effect.
  */
 
 (function() {
@@ -99,8 +100,7 @@ const fileContent = `/**
     return STICKERS[currentIndex];
   }
 
-  function renderSticker(trigger = "change") {
-    const item = pickRandomSticker();
+  function applySticker(item) {
     const { rot, offset } = getRandomPlacement();
 
     // Trigger cute sticker slap animation
@@ -113,6 +113,11 @@ const fileContent = `/**
     stickerBox.setAttribute("title", \`Sticker: \${item.name} (Stays 30s • Click to randomize)\`);
     stickerBox.setAttribute("aria-label", \`\${item.name} sticker\`);
     stickerBox.innerHTML = item.svg;
+  }
+
+  function renderSticker(trigger = "change") {
+    const item = pickRandomSticker();
+    applySticker(item);
   }
 
   // Click to randomly change
@@ -153,8 +158,35 @@ const fileContent = `/**
     renderSticker("track");
     resetAutoChange();
   };
+
+  // Expose hook so mobile remote or settings can choose any specific sticker
+  window.selectIslandSticker = function(stickerId) {
+    if (!stickerId || stickerId === "auto" || stickerId === "random") {
+      renderSticker("manual-auto");
+      resetAutoChange();
+      return;
+    }
+    const idx = STICKERS.findIndex(s => s.id === stickerId);
+    if (idx !== -1) {
+      currentIndex = idx;
+      applySticker(STICKERS[idx]);
+      resetAutoChange();
+    }
+  };
 })();
 `;
 
+// Write to desktop app
 fs.writeFileSync(path.join(__dirname, '..', 'app', 'stickers.js'), fileContent, 'utf8');
-console.log('Successfully generated app/stickers.js with all', renderedStickers.length, 'stickers and 30s stay duration!');
+
+// Also write mobile data file for phone browser selection
+const mobileStickersData = `/**
+ * stickers-data.js
+ * Exported sticker pack data for the Mobile Web Remote.
+ * Contains all 11 stick-it-up stickers for mobile selection.
+ */
+window.ISLAND_STICKERS = ${JSON.stringify(renderedStickers, null, 2)};
+`;
+fs.writeFileSync(path.join(__dirname, '..', 'mobile', 'stickers-data.js'), mobileStickersData, 'utf8');
+
+console.log('Successfully updated stickers for Desktop (app/stickers.js) and Mobile (mobile/stickers-data.js)!');

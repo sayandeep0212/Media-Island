@@ -148,6 +148,11 @@
 
   window.island.getAccentColor().then(setAccent);
   window.island.onAccentColor(setAccent);
+  if (window.island.onSelectSticker) {
+    window.island.onSelectSticker(stickerId => {
+      if (window.selectIslandSticker) window.selectIslandSticker(stickerId);
+    });
+  }
   window.island.onState(s => {
     if (s.type === "none") { pill.classList.remove("show", "open", "playing"); return; }
     const track = JSON.stringify([s.title || "", s.artist || "", s.art || ""]);

@@ -65,6 +65,8 @@
       <div id="wave" class="wave-visualizer" aria-hidden="true">
         <i></i><i></i><i></i><i></i><i></i>
       </div>
+      <!-- Dynamic Island Sticker on right side -->
+      <div id="mobileStickerBox" class="mobile-sticker-pill" title="Active Sticker"></div>
     </div>
 
     <!-- Active Media Display Info -->
@@ -100,6 +102,32 @@
       </button>
     </div>
   </main>
+
+  <!-- Dynamic Island Stickers Studio -->
+  <section class="stickers-studio">
+    <div class="section-title">
+      <span>Dynamic Island Stickers</span>
+      <span id="activeStickerLabel" class="active-sticker-label">Auto (30s)</span>
+    </div>
+    <p class="section-desc">Tap any sticker below to place and pin it on your Dynamic Island in real-time.</p>
+
+    <!-- Sticker Mode Controls -->
+    <div class="sticker-mode-bar">
+      <button id="stickerAutoBtn" class="sticker-mode-btn active" title="Automatically cycles stickers every 30 seconds">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+        <span>Auto-Rotate (30s)</span>
+      </button>
+      <button id="stickerRandomBtn" class="sticker-mode-btn" title="Pick a random sticker right now">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M10.59 9.17 5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
+        <span>Surprise Me</span>
+      </button>
+    </div>
+
+    <!-- Stickers Grid -->
+    <div class="stickers-grid" id="mobileStickerGrid">
+      <!-- 11 stick-it-up stickers rendered dynamically -->
+    </div>
+  </section>
 
   <!-- Accent Color Studio: Color changing of media playing bars -->
   <section class="color-studio">
@@ -205,6 +233,7 @@
     </div>
   </div>
 
+  <script src="stickers-data.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

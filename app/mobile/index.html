@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Media Island">
+  <title>Media Island Remote</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+  
+  <!-- Firebase Compat SDKs for universal zero-config web & mobile execution -->
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+  <!-- HTML5 QR Code Scanner for WhatsApp Web-style camera pairing -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+</head>
+<body>
+  <!-- Top App Header -->
+  <header class="app-header">
+    <div class="brand-wrapper">
+      <div class="brand-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 32 32">
+          <rect x="2" y="7" width="28" height="18" rx="9" fill="#000" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+          <rect x="6" y="11" width="20" height="10" rx="5" fill="var(--accent)"/>
+        </svg>
+      </div>
+      <div>
+        <span class="brand-title">Media Island</span>
+        <span class="brand-author">by sayandeep0212</span>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <div id="statusBadge" class="status-badge connecting">
+        <span class="status-dot"></span>
+        <span id="statusText">Connecting</span>
+      </div>
+      <button id="openScannerBtn" class="icon-btn" aria-label="Scan Desktop QR Code" title="Scan Desktop QR Code">
+        📷
+      </button>
+      <button id="settingsBtn" class="icon-btn" aria-label="Settings & Pairing" title="Settings & Pairing">
+        ⚙️
+      </button>
+    </div>
+  </header>
+
+  <!-- Dynamic Island Player Card -->
+  <main class="player-card">
+    <!-- Island Pill Header Preview -->
+    <div id="islandPill" class="island-preview">
+      <div id="artWrap" class="art-wrap">
+        <span id="sourceBadge" class="source-badge">
+          <img id="sourceIcon" alt="" src="">
+          <span id="sourceFallback" class="source-fallback">M</span>
+        </span>
+      </div>
+      <div class="track-meta">
+        <div id="trackTitle" class="track-title">No Media Playing</div>
+        <div id="trackArtist" class="track-artist">Connect your desktop browser</div>
+      </div>
+      <!-- Waveform Visualizer with dynamic accent color -->
+      <div id="wave" class="wave-visualizer" aria-hidden="true">
+        <i></i><i></i><i></i><i></i><i></i>
+      </div>
+      <!-- Dynamic Island Sticker on right side -->
+      <div id="mobileStickerBox" class="mobile-sticker-pill" title="Active Sticker"></div>
+    </div>
+
+    <!-- Active Media Display Info -->
+    <div class="active-meta">
+      <div id="activeTitle" class="active-title">Media Island Remote</div>
+      <div id="activeArtist" class="active-artist">Ready to control desktop audio & video</div>
+      <div id="sourceTag" class="source-tag">
+        <span id="sourceName">Desktop Chrome</span>
+      </div>
+    </div>
+
+    <!-- Seek Progress Bar -->
+    <div class="progress-container">
+      <div class="slider-wrapper">
+        <input id="seekSlider" class="seek-slider" type="range" min="0" max="100" value="0" aria-label="Scrub through media">
+      </div>
+      <div class="time-row">
+        <span id="elapsedTime">0:00</span>
+        <span id="remainingTime">-0:00</span>
+      </div>
+    </div>
+
+    <!-- Playback Controls -->
+    <div class="controls-row">
+      <button id="prevBtn" class="ctrl-btn secondary" aria-label="Previous Track" title="Previous Track">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M7 6c.55 0 1 .45 1 1v10c0 .55-.45 1-1 1s-1-.45-1-1V7c0-.55.45-1 1-1zm3.66 6.82 7.04 4.88c.67.46 1.58-.02 1.58-.82V7.12c0-.8-.91-1.28-1.58-.82l-7.04 4.88c-.46.32-.46 1 0 1.64z"/></svg>
+      </button>
+      <button id="playPauseBtn" class="ctrl-btn primary" aria-label="Play or Pause" title="Play or Pause">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 6.82v10.36c0 .79.87 1.27 1.54.84l8.14-5.18c.62-.39.62-1.29 0-1.69L9.54 5.98C8.87 5.55 8 6.03 8 6.82z"/></svg>
+      </button>
+      <button id="nextBtn" class="ctrl-btn secondary" aria-label="Next Track" title="Next Track">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17 6c.55 0 1 .45 1 1v10c0 .55-.45 1-1 1s-1-.45-1-1V7c0-.55.45-1 1-1zM5.72 6.3c-.67-.46-1.58.02-1.58.82v9.76c0 .8.91 1.28 1.58.82l7.04-4.88c.46-.32.46-1 0-1.64L5.72 6.3z"/></svg>
+      </button>
+    </div>
+  </main>
+
+  <!-- Dynamic Island Stickers Studio -->
+  <section class="stickers-studio">
+    <div class="section-title">
+      <span>Dynamic Island Stickers</span>
+      <span id="activeStickerLabel" class="active-sticker-label">Auto (30s)</span>
+    </div>
+    <p class="section-desc">Tap any sticker below to place and pin it on your Dynamic Island in real-time.</p>
+
+    <!-- Sticker Mode Controls -->
+    <div class="sticker-mode-bar">
+      <button id="stickerAutoBtn" class="sticker-mode-btn active" title="Automatically cycles stickers every 30 seconds">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+        <span>Auto-Rotate (30s)</span>
+      </button>
+      <button id="stickerRandomBtn" class="sticker-mode-btn" title="Pick a random sticker right now">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M10.59 9.17 5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
+        <span>Surprise Me</span>
+      </button>
+    </div>
+
+    <!-- Stickers Grid -->
+    <div class="stickers-grid" id="mobileStickerGrid">
+      <!-- 11 stick-it-up stickers rendered dynamically -->
+    </div>
+  </section>
+
+  <!-- Accent Color Studio: Color changing of media playing bars -->
+  <section class="color-studio">
+    <div class="section-title">
+      <span>Sound Wave Color</span>
+      <span id="activeHexLabel" style="color: var(--accent); font-family: monospace; font-size: 13px;">#FF8A3D</span>
+    </div>
+    <p class="section-desc">Change the color of the media playing bars and desktop island in real-time.</p>
+
+    <!-- Quick Palette -->
+    <div class="color-presets" id="colorPresets">
+      <div class="preset-chip active" data-color="#ff8a3d" style="background: #ff8a3d;" title="Cyberpunk Orange"></div>
+      <div class="preset-chip" data-color="#00f0ff" style="background: #00f0ff;" title="Electric Cyan"></div>
+      <div class="preset-chip" data-color="#ff2a6d" style="background: #ff2a6d;" title="Neon Pink"></div>
+      <div class="preset-chip" data-color="#05ffa1" style="background: #05ffa1;" title="Emerald Green"></div>
+      <div class="preset-chip" data-color="#b537f2" style="background: #b537f2;" title="Royal Violet"></div>
+      <div class="preset-chip" data-color="#ffb703" style="background: #ffb703;" title="Golden Amber"></div>
+      <div class="preset-chip" data-color="#ff3344" style="background: #ff3344;" title="Crimson Red"></div>
+      <div class="preset-chip" data-color="#e0e6ed" style="background: #e0e6ed;" title="Ice White"></div>
+    </div>
+
+    <!-- Custom Hex Picker -->
+    <div class="custom-color-row">
+      <div class="color-input-wrapper">
+        <input type="color" id="nativeColorPicker" class="native-color-picker" value="#ff8a3d">
+      </div>
+      <span class="hex-label">HEX</span>
+      <input type="text" id="customHexInput" class="hex-input" value="#FF8A3D" maxlength="7" placeholder="#HEX">
+      <button id="applyCustomColorBtn" class="apply-btn">Apply</button>
+    </div>
+  </section>
+
+  <!-- Mobile Footer & Copyright -->
+  <footer class="mobile-footer">
+    <div class="footer-meta">
+      <span>Media Island Remote</span>
+      <span>•</span>
+      <a href="https://github.com/sayandeep0212/Media-Island" target="_blank" rel="noopener">sayandeep0212</a>
+    </div>
+    <div class="footer-copyright">Copyright &copy; 2026 sayandeep0212. All rights reserved.</div>
+  </footer>
+
+  <!-- Device Pairing Modal -->
+  <div id="settingsModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">Pair with Desktop</h2>
+        <button id="closeModalBtn" class="close-btn" aria-label="Close Settings">✕</button>
+      </div>
+
+      <button id="openScannerFromModalBtn" class="btn-primary" style="margin-top: 0; margin-bottom: 14px; background: rgba(255, 255, 255, 0.08); color: var(--text-primary); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; gap: 8px;">
+        <span style="font-size: 16px;">📷</span> Scan Desktop QR Code
+      </button>
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px; font-size: 11px; color: var(--text-muted);">
+        <span style="flex: 1; height: 1px; background: var(--border);"></span>
+        <span>OR ENTER CODE MANUALLY</span>
+        <span style="flex: 1; height: 1px; background: var(--border);"></span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="roomCodeInput">Pairing Code / Room ID</label>
+        <input type="text" id="roomCodeInput" class="form-input" placeholder="e.g. island-8x29a">
+        <div class="form-hint">Enter the Room ID displayed in your Desktop Media Island Settings or scan the QR code.</div>
+      </div>
+
+      <button id="saveConfigBtn" class="btn-primary">Connect to Island</button>
+
+      <div class="quick-guide">
+        <strong>How to Pair:</strong>
+        <p style="margin-top: 5px; font-size: 12px; color: var(--text-muted); line-height: 1.4;">
+          Open <strong>Settings & Mobile Remote</strong> on your Desktop Media Island, scan the QR code with your phone camera, or enter your Room ID above.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- WhatsApp Web Style In-App QR Scanner Overlay -->
+  <div id="scannerOverlay" class="scanner-overlay">
+    <div class="scanner-header">
+      <div class="scanner-title-box">
+        <span class="scanner-title">Scan QR Code</span>
+        <span class="scanner-sub">Align desktop QR code in frame to pair</span>
+      </div>
+      <button id="closeScannerBtn" class="scanner-close-btn" aria-label="Close Scanner">✕</button>
+    </div>
+
+    <div class="scanner-viewport-wrapper">
+      <div id="qrReader" class="qr-reader-container"></div>
+      
+      <!-- WhatsApp Style Viewfinder Frame & Animated Laser Line -->
+      <div class="scanner-frame" id="scannerFrame">
+        <div class="corner top-left"></div>
+        <div class="corner top-right"></div>
+        <div class="corner bottom-left"></div>
+        <div class="corner bottom-right"></div>
+        <div class="scanner-laser"></div>
+      </div>
+    </div>
+
+    <div class="scanner-footer">
+      <p class="scanner-hint" id="scannerHint">Point camera at the QR code shown on your computer screen</p>
+      <div id="scannerError" class="scanner-error" style="display: none;"></div>
+    </div>
+  </div>
+
+  <script src="stickers-data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

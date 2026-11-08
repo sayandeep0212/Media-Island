@@ -47,6 +47,14 @@
   const applyCustomColorBtn = $("applyCustomColorBtn");
   const colorPresets = $("colorPresets");
 
+  // Dynamic Island Stickers Studio Elements
+  const mobileStickerBox = $("mobileStickerBox");
+  const mobileStickerGrid = $("mobileStickerGrid");
+  const activeStickerLabel = $("activeStickerLabel");
+  const stickerAutoBtn = $("stickerAutoBtn");
+  const stickerRandomBtn = $("stickerRandomBtn");
+  let currentStickerId = "auto";
+
   const ICON_PLAY = '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 6.82v10.36c0 .79.87 1.27 1.54.84l8.14-5.18c.62-.39.62-1.29 0-1.69L9.54 5.98C8.87 5.55 8 6.03 8 6.82z"/></svg>';
   const ICON_PAUSE = '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 6c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1s1-.45 1-1V7c0-.55-.45-1-1-1zm8 0c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1s1-.45 1-1V7c0-.55-.45-1-1-1z"/></svg>';
 
@@ -247,6 +255,121 @@
     }
   });
 
+  // ----------------------------------------------------
+  // Dynamic Island Stickers Studio (stick-it-up pack)
+  // ----------------------------------------------------
+  function getStickersList() {
+    return Array.isArray(window.ISLAND_STICKERS) ? window.ISLAND_STICKERS : [];
+  }
+
+  function initStickersStudio() {
+    if (!mobileStickerGrid) return;
+    const list = getStickersList();
+    if (!list.length) return;
+
+    mobileStickerGrid.innerHTML = list.map(s => `
+      <div class="sticker-card" data-id="${s.id}" role="button" tabindex="0" title="${s.name} Sticker">
+        <span class="sticker-badge">✓</span>
+        <div class="sticker-img-wrap">${s.svg}</div>
+        <span class="sticker-name">${s.name}</span>
+      </div>
+    `).join("");
+
+    // Set initial sticker preview in island pill
+    if (mobileStickerBox && list[0]) {
+      mobileStickerBox.innerHTML = list[0].svg;
+    }
+  }
+
+  function applyStickerUI(stickerId) {
+    const list = getStickersList();
+    if (stickerId === "auto") {
+      currentStickerId = "auto";
+      if (activeStickerLabel) activeStickerLabel.textContent = "Auto (30s)";
+      if (stickerAutoBtn) stickerAutoBtn.classList.add("active");
+      document.querySelectorAll(".sticker-card").forEach(c => c.classList.remove("active"));
+      return;
+    }
+
+    const found = list.find(s => s.id === stickerId);
+    if (!found) return;
+
+    currentStickerId = stickerId;
+    if (activeStickerLabel) activeStickerLabel.textContent = found.name;
+    if (stickerAutoBtn) stickerAutoBtn.classList.remove("active");
+
+    document.querySelectorAll(".sticker-card").forEach(c => {
+      c.classList.toggle("active", c.dataset.id === stickerId);
+    });
+
+    if (mobileStickerBox) {
+      mobileStickerBox.innerHTML = found.svg;
+      mobileStickerBox.classList.remove("slap");
+      void mobileStickerBox.offsetWidth; // Force CSS reflow for slap animation
+      mobileStickerBox.classList.add("slap");
+    }
+  }
+
+  function chooseSticker(stickerId, isUserAction = true) {
+    applyStickerUI(stickerId);
+
+    if (isUserAction) {
+      vibrate(30);
+      sendCommand("setSticker", stickerId);
+      if (db && roomCode) {
+        db.ref(`rooms/${roomCode}/settings`).update({
+          currentSticker: stickerId,
+          updatedAt: Date.now()
+        }).catch(() => {});
+      }
+    }
+  }
+
+  if (mobileStickerGrid) {
+    mobileStickerGrid.addEventListener("click", e => {
+      const card = e.target.closest(".sticker-card");
+      if (!card) return;
+      const id = card.dataset.id;
+      if (id) chooseSticker(id, true);
+    });
+
+    mobileStickerGrid.addEventListener("keydown", e => {
+      if (e.key === "Enter" || e.key === " ") {
+        const card = e.target.closest(".sticker-card");
+        if (card && card.dataset.id) {
+          e.preventDefault();
+          chooseSticker(card.dataset.id, true);
+        }
+      }
+    });
+  }
+
+  if (stickerAutoBtn) {
+    stickerAutoBtn.addEventListener("click", () => {
+      chooseSticker("auto", true);
+    });
+  }
+
+  if (stickerRandomBtn) {
+    stickerRandomBtn.addEventListener("click", () => {
+      const list = getStickersList();
+      if (!list.length) return;
+      const filtered = list.filter(s => s.id !== currentStickerId);
+      const pool = filtered.length ? filtered : list;
+      const pick = pool[Math.floor(Math.random() * pool.length)];
+      chooseSticker(pick.id, true);
+    });
+  }
+
+  if (mobileStickerBox) {
+    mobileStickerBox.addEventListener("click", () => {
+      const list = getStickersList();
+      if (!list.length) return;
+      const nextIdx = (list.findIndex(s => s.id === currentStickerId) + 1) % list.length;
+      chooseSticker(list[nextIdx].id, true);
+    });
+  }
+
   // Modal Dialog Events
   settingsBtn.addEventListener("click", () => {
     roomCodeInput.value = roomCode || "";
@@ -324,12 +447,13 @@
           setStatus("error", "Firebase Error");
         });
 
-        // Listen for accent color updates from desktop
+        // Listen for accent color & sticker updates from desktop
         const settingsRef = db.ref(`rooms/${roomCode}/settings`);
         settingsRef.on("value", snapshot => {
           const val = snapshot.val();
-          if (val && val.accentColor) {
-            setAccentColor(val.accentColor, true);
+          if (val) {
+            if (val.accentColor) setAccentColor(val.accentColor, true);
+            if (val.currentSticker) chooseSticker(val.currentSticker, false);
           }
         });
 
@@ -372,6 +496,8 @@
               updateMediaState(data);
             } else if (data.type === "accent-color") {
               setAccentColor(data.color, true);
+            } else if (data.type === "sticker") {
+              chooseSticker(data.value, false);
             }
           } catch {}
         };
@@ -497,6 +623,7 @@
   if (closeScannerBtn) closeScannerBtn.addEventListener("click", stopScanner);
 
   // Initialize
+  initStickersStudio();
   loadConfigFromUrlOrStorage().then(() => {
     connect();
   });

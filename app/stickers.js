@@ -14,7 +14,8 @@
  * - NoriHeadphonesSticker
  *
  * Provides responsive sizing, random placement & tilt,
- * 30-second automatic stay interval, and the authentic stick-it-up 3D vinyl peel effect.
+ * 30-second automatic stay interval, manual selection hook,
+ * and the authentic stick-it-up 3D vinyl peel effect.
  */
 
 (function() {
@@ -111,8 +112,7 @@
     return STICKERS[currentIndex];
   }
 
-  function renderSticker(trigger = "change") {
-    const item = pickRandomSticker();
+  function applySticker(item) {
     const { rot, offset } = getRandomPlacement();
 
     // Trigger cute sticker slap animation
@@ -125,6 +125,11 @@
     stickerBox.setAttribute("title", `Sticker: ${item.name} (Stays 30s • Click to randomize)`);
     stickerBox.setAttribute("aria-label", `${item.name} sticker`);
     stickerBox.innerHTML = item.svg;
+  }
+
+  function renderSticker(trigger = "change") {
+    const item = pickRandomSticker();
+    applySticker(item);
   }
 
   // Click to randomly change
@@ -164,5 +169,20 @@
   window.changeIslandSticker = function() {
     renderSticker("track");
     resetAutoChange();
+  };
+
+  // Expose hook so mobile remote or settings can choose any specific sticker
+  window.selectIslandSticker = function(stickerId) {
+    if (!stickerId || stickerId === "auto" || stickerId === "random") {
+      renderSticker("manual-auto");
+      resetAutoChange();
+      return;
+    }
+    const idx = STICKERS.findIndex(s => s.id === stickerId);
+    if (idx !== -1) {
+      currentIndex = idx;
+      applySticker(STICKERS[idx]);
+      resetAutoChange();
+    }
   };
 })();
