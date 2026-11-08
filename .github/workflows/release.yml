@@ -52,7 +52,7 @@ jobs:
 
       - name: Build Windows Installer
         working-directory: ./app
-        run: npm run build:win
+        run: npm run build:win -- --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

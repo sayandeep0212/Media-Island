@@ -1,6 +1,10 @@
 {
   "name": "media-island-root",
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sayandeep0212/Media-Island.git"
+  },
   "scripts": {
     "generate-stickers": "node scripts/generate-stickers.js",
     "build:win": "node scripts/generate-stickers.js && npm --prefix app run build:win",

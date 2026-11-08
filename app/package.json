@@ -6,10 +6,14 @@
   "author": "sayandeep0212 <https://github.com/sayandeep0212>",
   "copyright": "Copyright © 2026 sayandeep0212",
   "homepage": "https://github.com/sayandeep0212/Media-Island",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sayandeep0212/Media-Island.git"
+  },
   "scripts": {
     "start": "electron .",
-    "build:win": "electron-builder --win nsis",
-    "build:mac": "electron-builder --mac"
+    "build:win": "electron-builder --win nsis --publish never",
+    "build:mac": "electron-builder --mac --publish never"
   },
   "dependencies": {
     "firebase": "^13.1.0",
