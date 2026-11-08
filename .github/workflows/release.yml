@@ -62,15 +62,28 @@ jobs:
         env:
           ELECTRON_SKIP_BINARY_DOWNLOAD: 1
 
-      - name: Pre-seed Electron Binary Cache
+      - name: Pre-seed Electron & NSIS Binary Caches
         shell: pwsh
         run: |
-          $cacheDir = "$env:LOCALAPPDATA/electron/Cache"
-          New-Item -ItemType Directory -Force -Path $cacheDir | Out-Null
-          $target = "$cacheDir/electron-v33.4.11-win32-x64.zip"
-          if (-not (Test-Path $target) -or (Get-Item $target).Length -lt 50000000) {
+          $electronCache = "$env:LOCALAPPDATA/electron/Cache"
+          New-Item -ItemType Directory -Force -Path $electronCache | Out-Null
+          $targetElectron = "$electronCache/electron-v33.4.11-win32-x64.zip"
+          if (-not (Test-Path $targetElectron) -or (Get-Item $targetElectron).Length -lt 50000000) {
             Write-Host "Pre-seeding Electron binary from high-speed mirror to avoid GitHub 504 timeouts..."
-            Invoke-WebRequest -Uri "https://cdn.npmmirror.com/binaries/electron/v33.4.11/electron-v33.4.11-win32-x64.zip" -OutFile $target
+            Invoke-WebRequest -Uri "https://cdn.npmmirror.com/binaries/electron/v33.4.11/electron-v33.4.11-win32-x64.zip" -OutFile $targetElectron
+          }
+
+          $nsisCache = "$env:LOCALAPPDATA/electron-builder/Cache/nsis"
+          New-Item -ItemType Directory -Force -Path $nsisCache | Out-Null
+          $nsisResource = "$nsisCache/nsis-resources-3.4.1.7z"
+          if (-not (Test-Path $nsisResource) -or (Get-Item $nsisResource).Length -lt 10000) {
+            Write-Host "Pre-seeding NSIS resources from mirror..."
+            Invoke-WebRequest -Uri "https://cdn.npmmirror.com/binaries/electron-builder-binaries/nsis-resources-3.4.1/nsis-resources-3.4.1.7z" -OutFile $nsisResource
+          }
+          $nsisBin = "$nsisCache/nsis-3.0.4.1.7z"
+          if (-not (Test-Path $nsisBin) -or (Get-Item $nsisBin).Length -lt 10000) {
+            Write-Host "Pre-seeding NSIS binary from mirror..."
+            Invoke-WebRequest -Uri "https://cdn.npmmirror.com/binaries/electron-builder-binaries/nsis-3.0.4.1/nsis-3.0.4.1.7z" -OutFile $nsisBin
           }
 
       - name: Build Windows Installer
@@ -79,6 +92,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ELECTRON_MIRROR: "https://npmmirror.com/mirrors/electron/"
+          ELECTRON_BUILDER_BINARIES_MIRROR: "https://npmmirror.com/mirrors/electron-builder-binaries/"
 
       - name: Determine Tag Name
         id: vars
