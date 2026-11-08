@@ -6,6 +6,11 @@ Media Island is a dynamic island for Windows that shows what is playing in Chrom
 
 ## 1. Windows Desktop App
 
+### Windows Installer (.exe)
+Download and run the installer to set up Media Island on your device:
+- **Installer**: [`app/release/Media Island Setup 1.0.0.exe`](app/release/Media%20Island%20Setup%201.0.0.exe)
+- Or download from [GitHub Releases](https://github.com/sayandeep0212/Media-Island/releases).
+
 ### Run from Source
 1. Install [Node.js](https://nodejs.org).
 2. Open PowerShell and run:

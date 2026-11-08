@@ -3,7 +3,9 @@ node_modules/
 app/node_modules/
 
 # Build & releases
-app/release*/
+app/release/*
+!app/release/*.exe
+!app/release/*.blockmap
 app/dist/
 app/builder-debug.yml
 
