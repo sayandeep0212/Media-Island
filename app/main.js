@@ -307,10 +307,11 @@ function createWindow() {
 }
 
 function openSettings(tab = "tab-remote") {
+  const safeTab = (typeof tab === "string" && tab.trim()) ? tab.trim() : "tab-remote";
   if (settingsWin && !settingsWin.isDestroyed()) {
     settingsWin.show();
     settingsWin.focus();
-    if (tab) settingsWin.webContents.send("switch-tab", tab);
+    settingsWin.webContents.send("switch-tab", safeTab);
     return;
   }
   settingsWin = new BrowserWindow({
@@ -322,7 +323,7 @@ function openSettings(tab = "tab-remote") {
     icon: path.join(__dirname, "icon.png"),
     webPreferences: { preload: path.join(__dirname, "preload.js") }
   });
-  settingsWin.loadFile("settings.html", { hash: tab });
+  settingsWin.loadFile("settings.html", { hash: safeTab });
   settingsWin.on("closed", () => { settingsWin = null; });
 }
 
