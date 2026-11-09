@@ -27,9 +27,11 @@
       inset: 0;
       background: transparent;
       opacity: 0;
-      transition: opacity 600ms cubic-bezier(0.2, 0.8, 0.2, 1), background-color 600ms ease;
+      transition: opacity 400ms ease;
       z-index: 1;
       pointer-events: none;
+      will-change: opacity;
+      transform: translateZ(0);
     }
 
     #blackoutLayer.active {
@@ -42,14 +44,14 @@
       position: absolute;
       bottom: 24px;
       right: 28px;
-      color: rgba(255, 255, 255, 0.35);
+      color: rgba(255, 255, 255, 0.45);
       font-size: 11px;
       letter-spacing: 0.5px;
       display: flex;
       align-items: center;
       gap: 8px;
       opacity: 0;
-      transition: opacity 500ms ease;
+      transition: opacity 400ms ease;
       z-index: 5;
     }
 
@@ -62,13 +64,13 @@
       height: 6px;
       border-radius: 50%;
       background: var(--glow-accent, #00f0ff);
-      box-shadow: 0 0 8px var(--glow-accent, #00f0ff);
+      box-shadow: 0 0 6px var(--glow-accent, #00f0ff);
       animation: pulseDot 2s infinite ease-in-out;
     }
 
     @keyframes pulseDot {
       0%, 100% { opacity: 0.3; transform: scale(0.9); }
-      50% { opacity: 1; transform: scale(1.2); }
+      50% { opacity: 1; transform: scale(1.15); }
     }
 
     /* Neon Perimeter Edge Glow Container */
@@ -78,17 +80,23 @@
       z-index: 10;
       pointer-events: none;
       opacity: 0;
-      transition: opacity 500ms ease, filter 300ms ease;
+      display: none;
+      transition: opacity 350ms ease;
+      will-change: opacity;
+      transform: translateZ(0);
     }
 
     #glowContainer.enabled {
+      display: block;
       opacity: 1;
     }
 
-    /* Core edge lighting layers */
+    /* Core edge lighting layers - Optimized GPU gradient falloff */
     .edge {
       position: absolute;
       pointer-events: none;
+      will-change: opacity;
+      transform: translateZ(0);
     }
 
     /* Top Edge */
@@ -96,10 +104,13 @@
       top: 0;
       left: 0;
       right: 0;
-      height: var(--glow-depth, 70px);
-      background: linear-gradient(to bottom, var(--edge-top-color, rgba(0, 240, 255, 0.95)) 0%, transparent 100%);
-      filter: blur(var(--glow-blur, 16px));
-      transform-origin: top center;
+      height: var(--glow-depth, 65px);
+      background: linear-gradient(to bottom,
+        var(--edge-top-color, rgba(0, 240, 255, 0.95)) 0%,
+        var(--edge-top-mid, rgba(0, 240, 255, 0.45)) 35%,
+        var(--edge-top-faint, rgba(0, 240, 255, 0.12)) 70%,
+        transparent 100%
+      );
     }
 
     /* Bottom Edge */
@@ -107,10 +118,13 @@
       bottom: 0;
       left: 0;
       right: 0;
-      height: var(--glow-depth, 70px);
-      background: linear-gradient(to top, var(--edge-bottom-color, rgba(255, 140, 0, 0.95)) 0%, transparent 100%);
-      filter: blur(var(--glow-blur, 16px));
-      transform-origin: bottom center;
+      height: var(--glow-depth, 65px);
+      background: linear-gradient(to top,
+        var(--edge-bottom-color, rgba(255, 140, 0, 0.95)) 0%,
+        var(--edge-bottom-mid, rgba(255, 140, 0, 0.45)) 35%,
+        var(--edge-bottom-faint, rgba(255, 140, 0, 0.12)) 70%,
+        transparent 100%
+      );
     }
 
     /* Left Edge */
@@ -118,10 +132,13 @@
       top: 0;
       bottom: 0;
       left: 0;
-      width: var(--glow-depth, 70px);
-      background: linear-gradient(to right, var(--edge-left-color, rgba(181, 55, 242, 0.95)) 0%, transparent 100%);
-      filter: blur(var(--glow-blur, 16px));
-      transform-origin: center left;
+      width: var(--glow-depth, 65px);
+      background: linear-gradient(to right,
+        var(--edge-left-color, rgba(181, 55, 242, 0.95)) 0%,
+        var(--edge-left-mid, rgba(181, 55, 242, 0.45)) 35%,
+        var(--edge-left-faint, rgba(181, 55, 242, 0.12)) 70%,
+        transparent 100%
+      );
     }
 
     /* Right Edge */
@@ -129,100 +146,58 @@
       top: 0;
       bottom: 0;
       right: 0;
-      width: var(--glow-depth, 70px);
-      background: linear-gradient(to left, var(--edge-right-color, rgba(0, 210, 255, 0.95)) 0%, transparent 100%);
-      filter: blur(var(--glow-blur, 16px));
-      transform-origin: center right;
+      width: var(--glow-depth, 65px);
+      background: linear-gradient(to left,
+        var(--edge-right-color, rgba(0, 210, 255, 0.95)) 0%,
+        var(--edge-right-mid, rgba(0, 210, 255, 0.45)) 35%,
+        var(--edge-right-faint, rgba(0, 210, 255, 0.12)) 70%,
+        transparent 100%
+      );
     }
 
-    /* Luminous razor-thin outer border line */
+    /* Thin perimeter border line with soft inset glow */
     .edge-border-line {
       position: absolute;
       inset: 0;
-      border: 3.5px solid transparent;
+      border: 2.5px solid transparent;
       border-image-slice: 1;
-      border-image-source: var(--border-gradient, linear-gradient(135deg, #7928ca 0%, #00f0ff 35%, #0070f3 60%, #ff8a3d 85%, #ff2a6d 100%));
-      box-shadow: var(--edge-box-shadow, 
-        inset 0 0 25px rgba(0, 240, 255, 0.6),
-        inset 0 0 50px rgba(181, 55, 242, 0.4),
-        inset 0 0 85px rgba(255, 138, 61, 0.35)
-      );
-      filter: drop-shadow(0 0 10px rgba(0, 240, 255, 0.8));
+      border-image-source: var(--border-gradient, linear-gradient(135deg, #9b51e0 0%, #00f0ff 30%, #0070f3 55%, #ff8a3d 80%, #ff2a6d 100%));
+      box-shadow: var(--edge-box-shadow, inset 0 0 18px rgba(0, 240, 255, 0.4));
+      will-change: opacity;
+      transform: translateZ(0);
     }
 
-    /* Secondary deep ambient spread */
-    .edge-deep-spread {
-      position: absolute;
-      inset: 0;
-      box-shadow: var(--deep-spread,
-        inset 0 0 60px 15px rgba(0, 240, 255, 0.4),
-        inset 0 0 110px 25px rgba(181, 55, 242, 0.25),
-        inset 0 0 160px 40px rgba(255, 140, 0, 0.2)
-      );
-      mix-blend-mode: screen;
-      filter: blur(12px);
-    }
-
-    /* Music Beat Pulse Animation */
+    /* Music Beat Pulse Animation - 100% GPU Opacity Only (Zero CPU/Layout reflow) */
     .pulse-beat {
-      animation: beatPulse 1.8s infinite ease-in-out;
+      animation: beatPulse 1.6s infinite ease-in-out;
     }
 
     @keyframes beatPulse {
-      0% {
-        filter: brightness(0.85) contrast(1.05);
-        opacity: 0.7;
+      0%, 100% {
+        opacity: calc(var(--base-opacity, 0.85) * 0.6);
       }
       35% {
-        filter: brightness(1.35) contrast(1.15) saturate(1.2);
-        opacity: 1.0;
-        transform: scale(1.002);
+        opacity: var(--base-opacity, 0.85);
       }
       65% {
-        filter: brightness(0.95) contrast(1.08);
-        opacity: 0.8;
+        opacity: calc(var(--base-opacity, 0.85) * 0.75);
       }
       85% {
-        filter: brightness(1.2) contrast(1.1);
-        opacity: 0.95;
-      }
-      100% {
-        filter: brightness(0.85) contrast(1.05);
-        opacity: 0.7;
-      }
-    }
-
-    /* Fast rhythmic kick when a beat is detected or triggered */
-    .beat-kick {
-      animation: kickInstant 320ms cubic-bezier(0.1, 0.9, 0.2, 1);
-    }
-
-    @keyframes kickInstant {
-      0% {
-        filter: brightness(1.7) contrast(1.3) saturate(1.4);
-        opacity: 1.0;
-        transform: scale(1.006);
-      }
-      100% {
-        filter: brightness(1.0);
-        opacity: var(--base-opacity, 0.85);
-        transform: scale(1);
+        opacity: calc(var(--base-opacity, 0.85) * 0.92);
       }
     }
 
     /* Gentle Breathing when music is paused */
     .pulse-idle {
-      animation: breatheSmooth 4.5s infinite ease-in-out;
+      animation: breatheSmooth 5s infinite ease-in-out;
     }
 
     @keyframes breatheSmooth {
       0%, 100% {
-        opacity: 0.35;
-        filter: brightness(0.7) blur(2px);
+        opacity: calc(var(--base-opacity, 0.85) * 0.35);
       }
       50% {
-        opacity: 0.65;
-        filter: brightness(1.0) blur(0px);
+        opacity: calc(var(--base-opacity, 0.85) * 0.7);
       }
     }
   </style>
@@ -243,7 +218,6 @@
     <div class="edge edge-left"></div>
     <div class="edge edge-right"></div>
     <div class="edge-border-line"></div>
-    <div class="edge-deep-spread"></div>
   </div>
 
   <script>
@@ -252,41 +226,52 @@
     const sleepHudText = document.getElementById("sleepHudText");
 
     let glowConfig = {
-      enabled: true,
-      mode: "aurora", // "aurora" (uploaded image exact), "accent", "cyan", "pink", "sunset", "emerald", "custom"
+      enabled: false,
+      mode: "aurora",
       customColor: "#00f0ff",
       brightness: 100,
-      sleepBlackout: false,
-      pulseStyle: "beat" // "beat", "breathe", "static"
+      sleepBlackout: false
     };
 
     let currentAccent = "#00f0ff";
     let isPlaying = false;
-    let beatInterval = null;
 
-    // Apply color schemes
+    function hexToRgba(hex, alpha) {
+      hex = hex.replace("#", "");
+      if (hex.length === 3) hex = hex.split("").map(c => c + c).join("");
+      const num = parseInt(hex, 16);
+      const r = (num >> 16) & 255;
+      const g = (num >> 8) & 255;
+      const b = num & 255;
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    // Apply color schemes efficiently using multi-stop linear gradients
     function applyGlowTheme() {
       const mode = glowConfig.mode || "aurora";
       const brightness = (glowConfig.brightness || 100) / 100;
-      glowContainer.style.setProperty("--base-opacity", String(0.85 * brightness));
+      glowContainer.style.setProperty("--base-opacity", String(0.9 * brightness));
 
       if (mode === "aurora") {
-        // Matches the exact photo: Cyan/Blue top-right, Purple/Magenta top-left, Orange/Gold bottom
+        // Matches the uploaded photo: Cyan/Blue top-right, Purple/Magenta top-left, Orange/Gold bottom
         glowContainer.style.setProperty("--edge-top-color", `rgba(0, 240, 255, ${0.95 * brightness})`);
+        glowContainer.style.setProperty("--edge-top-mid", `rgba(0, 240, 255, ${0.45 * brightness})`);
+        glowContainer.style.setProperty("--edge-top-faint", `rgba(0, 240, 255, ${0.12 * brightness})`);
+
         glowContainer.style.setProperty("--edge-right-color", `rgba(0, 210, 255, ${0.95 * brightness})`);
+        glowContainer.style.setProperty("--edge-right-mid", `rgba(0, 210, 255, ${0.45 * brightness})`);
+        glowContainer.style.setProperty("--edge-right-faint", `rgba(0, 210, 255, ${0.12 * brightness})`);
+
         glowContainer.style.setProperty("--edge-left-color", `rgba(181, 55, 242, ${0.95 * brightness})`);
+        glowContainer.style.setProperty("--edge-left-mid", `rgba(181, 55, 242, ${0.45 * brightness})`);
+        glowContainer.style.setProperty("--edge-left-faint", `rgba(181, 55, 242, ${0.12 * brightness})`);
+
         glowContainer.style.setProperty("--edge-bottom-color", `rgba(255, 140, 0, ${0.95 * brightness})`);
+        glowContainer.style.setProperty("--edge-bottom-mid", `rgba(255, 140, 0, ${0.45 * brightness})`);
+        glowContainer.style.setProperty("--edge-bottom-faint", `rgba(255, 140, 0, ${0.12 * brightness})`);
+
         glowContainer.style.setProperty("--border-gradient", "linear-gradient(135deg, #9b51e0 0%, #00f0ff 30%, #0070f3 55%, #ff8a3d 80%, #ff2a6d 100%)");
-        glowContainer.style.setProperty("--edge-box-shadow", `
-          inset 0 0 25px rgba(0, 240, 255, ${0.7 * brightness}),
-          inset 0 0 55px rgba(181, 55, 242, ${0.5 * brightness}),
-          inset 0 0 95px rgba(255, 138, 61, ${0.45 * brightness})
-        `);
-        glowContainer.style.setProperty("--deep-spread", `
-          inset 0 0 60px 15px rgba(0, 240, 255, ${0.4 * brightness}),
-          inset 0 0 110px 25px rgba(181, 55, 242, ${0.3 * brightness}),
-          inset 0 0 160px 40px rgba(255, 140, 0, ${0.25 * brightness})
-        `);
+        glowContainer.style.setProperty("--edge-box-shadow", `inset 0 0 24px rgba(0, 240, 255, ${0.5 * brightness})`);
         document.documentElement.style.setProperty("--glow-accent", "#00f0ff");
       } else {
         let baseColor = currentAccent;
@@ -297,20 +282,28 @@
         else if (mode === "purple") baseColor = "#b537f2";
         else if (mode === "custom" && glowConfig.customColor) baseColor = glowConfig.customColor;
 
-        glowContainer.style.setProperty("--edge-top-color", `${baseColor}${Math.round(230 * brightness).toString(16).padStart(2, '0')}`);
-        glowContainer.style.setProperty("--edge-right-color", `${baseColor}${Math.round(210 * brightness).toString(16).padStart(2, '0')}`);
-        glowContainer.style.setProperty("--edge-left-color", `${baseColor}${Math.round(210 * brightness).toString(16).padStart(2, '0')}`);
-        glowContainer.style.setProperty("--edge-bottom-color", `${baseColor}${Math.round(240 * brightness).toString(16).padStart(2, '0')}`);
+        const solid = hexToRgba(baseColor, 0.95 * brightness);
+        const mid = hexToRgba(baseColor, 0.42 * brightness);
+        const faint = hexToRgba(baseColor, 0.12 * brightness);
+
+        glowContainer.style.setProperty("--edge-top-color", solid);
+        glowContainer.style.setProperty("--edge-top-mid", mid);
+        glowContainer.style.setProperty("--edge-top-faint", faint);
+
+        glowContainer.style.setProperty("--edge-right-color", solid);
+        glowContainer.style.setProperty("--edge-right-mid", mid);
+        glowContainer.style.setProperty("--edge-right-faint", faint);
+
+        glowContainer.style.setProperty("--edge-left-color", solid);
+        glowContainer.style.setProperty("--edge-left-mid", mid);
+        glowContainer.style.setProperty("--edge-left-faint", faint);
+
+        glowContainer.style.setProperty("--edge-bottom-color", solid);
+        glowContainer.style.setProperty("--edge-bottom-mid", mid);
+        glowContainer.style.setProperty("--edge-bottom-faint", faint);
+
         glowContainer.style.setProperty("--border-gradient", `linear-gradient(135deg, ${baseColor} 0%, #ffffff 50%, ${baseColor} 100%)`);
-        glowContainer.style.setProperty("--edge-box-shadow", `
-          inset 0 0 30px ${baseColor}${Math.round(180 * brightness).toString(16).padStart(2, '0')},
-          inset 0 0 70px ${baseColor}${Math.round(120 * brightness).toString(16).padStart(2, '0')},
-          inset 0 0 120px ${baseColor}${Math.round(80 * brightness).toString(16).padStart(2, '0')}
-        `);
-        glowContainer.style.setProperty("--deep-spread", `
-          inset 0 0 70px 20px ${baseColor}${Math.round(90 * brightness).toString(16).padStart(2, '0')},
-          inset 0 0 140px 40px ${baseColor}${Math.round(50 * brightness).toString(16).padStart(2, '0')}
-        `);
+        glowContainer.style.setProperty("--edge-box-shadow", `inset 0 0 24px ${hexToRgba(baseColor, 0.45 * brightness)}`);
         document.documentElement.style.setProperty("--glow-accent", baseColor);
       }
     }
@@ -335,31 +328,18 @@
       updateAnimationState();
     }
 
-    function triggerBeatKick() {
-      if (!glowConfig.enabled) return;
-      glowContainer.classList.remove("beat-kick");
-      void glowContainer.offsetWidth; // Force reflow
-      glowContainer.classList.add("beat-kick");
-    }
-
     function updateAnimationState() {
       if (!glowConfig.enabled) {
-        glowContainer.classList.remove("pulse-beat", "pulse-idle", "beat-kick");
-        if (beatInterval) { clearInterval(beatInterval); beatInterval = null; }
+        glowContainer.classList.remove("pulse-beat", "pulse-idle");
         return;
       }
 
       if (isPlaying) {
         glowContainer.classList.remove("pulse-idle");
         glowContainer.classList.add("pulse-beat");
-        if (!beatInterval) {
-          // Subtle rhythmic kick roughly at 120 bpm (every 500ms / 1000ms sync)
-          beatInterval = setInterval(triggerBeatKick, 1200);
-        }
       } else {
-        glowContainer.classList.remove("pulse-beat", "beat-kick");
+        glowContainer.classList.remove("pulse-beat");
         glowContainer.classList.add("pulse-idle");
-        if (beatInterval) { clearInterval(beatInterval); beatInterval = null; }
       }
     }
 
@@ -407,4 +387,3 @@
   </script>
 </body>
 </html>
-

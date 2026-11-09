@@ -33,7 +33,7 @@ function loadEnvConfig() {
             process.env[key] = process.env[key] || val;
           }
         }
-      } catch {}
+      } catch { }
     }
   }
 
@@ -80,7 +80,7 @@ let settings = {
   firebaseConfig: null,
   currentSticker: "auto",
   glow: {
-    enabled: true,
+    enabled: false,
     mode: "aurora",
     customColor: "#00f0ff",
     brightness: 100,
@@ -139,7 +139,7 @@ function loadSettings() {
     }
     if (saved.glow && typeof saved.glow === "object") {
       settings.glow = Object.assign({
-        enabled: true,
+        enabled: false,
         mode: "aurora",
         customColor: "#00f0ff",
         brightness: 100,
@@ -205,429 +205,450 @@ function createTray() {
 
 function updatePowerSave() {
   const isMusicPlaying = !!(lastMediaState && lastMediaState.playing && lastMediaState.type !== "none");
-  if (isMusicPlaying) {
-    if (psbId === null || !powerSaveBlocker.isStarted(psbId)) {
-      psbId = powerSaveBlocker.start("prevent-app-suspension");
-    }
-  } else {
-    if (psbId !== null && powerSaveBlocker.isStarted(psbId)) {
-      powerSaveBlocker.stop(psbId);
-      psbId = null;
-    }
-  }
-}
-
-function placeGlow() {
-  if (!glowWin || glowWin.isDestroyed()) return;
-  const primary = screen.getPrimaryDisplay();
-  glowWin.setBounds(primary.bounds);
-}
-
-function createGlowWindow() {
-  const primary = screen.getPrimaryDisplay();
-  glowWin = new BrowserWindow({
-    x: primary.bounds.x,
-    y: primary.bounds.y,
-    width: primary.bounds.width,
-    height: primary.bounds.height,
-    frame: false,
-    transparent: true,
-    resizable: false,
-    hasShadow: false,
-    alwaysOnTop: true,
-    skipTaskbar: true,
-    focusable: false,
-    webPreferences: { preload: path.join(__dirname, "preload.js") }
-  });
-  glowWin.setAlwaysOnTop(true, "screen-saver");
-  glowWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-  if (settings.glow && settings.glow.sleepBlackout) {
-    glowWin.setIgnoreMouseEvents(false);
-  } else {
-    glowWin.setIgnoreMouseEvents(true, { forward: true });
-  }
-  glowWin.loadFile("glow.html");
-  glowWin.webContents.on("did-finish-load", () => {
-    glowWin.webContents.send("glow-config", settings.glow);
-    glowWin.webContents.send("accent-color", settings.accentColor);
-    if (lastMediaState) glowWin.webContents.send("state", lastMediaState);
-  });
-  screen.on("display-metrics-changed", placeGlow);
-}
-
-function applyGlowConfig(configUpdate, broadcast = true) {
-  if (!configUpdate || typeof configUpdate !== "object") return;
-  settings.glow = Object.assign(settings.glow || {}, configUpdate);
-  saveSettings();
-
-  if (glowWin && !glowWin.isDestroyed()) {
-    glowWin.webContents.send("glow-config", settings.glow);
-    if (settings.glow.sleepBlackout) {
-      glowWin.setIgnoreMouseEvents(false);
+    const isSleepBlackout = !!(settings.glow && settings.glow.sleepBlackout);
+    // Only keep laptop awake during Ambient Sleep Blackout mode
+    if (isSleepBlackout && isMusicPlaying) {
+      if (psbId === null || !powerSaveBlocker.isStarted(psbId)) {
+        psbId = powerSaveBlocker.start("prevent-app-suspension");
+      }
     } else {
-      glowWin.setIgnoreMouseEvents(true, { forward: true });
+      if (psbId !== null && powerSaveBlocker.isStarted(psbId)) {
+        powerSaveBlocker.stop(psbId);
+        psbId = null;
+      }
     }
   }
 
-  if (win && !win.isDestroyed()) {
-    win.webContents.send("glow-config", settings.glow);
-  }
-
-  if (settingsWin && !settingsWin.isDestroyed()) {
-    settingsWin.webContents.send("glow-config", settings.glow);
-  }
-
-  if (tray) {
-    createTray();
-  }
-
-  if (broadcast) {
-    const payload = JSON.stringify({ type: "glow", value: settings.glow });
-    for (const c of clients) {
-      if (c.readyState === 1) c.send(payload);
+  function syncGlowVisibility() {
+    if (!glowWin || glowWin.isDestroyed()) return;
+    const isNeeded = !!(settings.glow && (settings.glow.enabled || settings.glow.sleepBlackout));
+    if (isNeeded) {
+      if (!glowWin.isVisible()) {
+        glowWin.showInactive();
+      }
+      if (settings.glow.sleepBlackout) {
+        glowWin.setIgnoreMouseEvents(false);
+      } else {
+        glowWin.setIgnoreMouseEvents(true, { forward: true });
+      }
+    } else {
+      if (glowWin.isVisible()) {
+        glowWin.hide();
+      }
     }
-    firebaseSync.pushSettings(settings);
   }
-}
 
-function createWindow() {
-  win = new BrowserWindow({
-    width: 560, height: 190,
-    frame: false, transparent: true, resizable: false, hasShadow: false,
-    alwaysOnTop: true, skipTaskbar: true, focusable: false,
-    webPreferences: { preload: path.join(__dirname, "preload.js") }
-  });
-  win.setAlwaysOnTop(true, "screen-saver");
-  win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-  win.setIgnoreMouseEvents(true, { forward: true });
-  win.loadFile("index.html");
-  win.webContents.on("did-finish-load", () => win.webContents.send("accent-color", settings.accentColor));
-  place();
-  screen.on("display-metrics-changed", place);
-}
-
-function openSettings(tab = "tab-remote") {
-  const safeTab = (typeof tab === "string" && tab.trim()) ? tab.trim() : "tab-remote";
-  if (settingsWin && !settingsWin.isDestroyed()) {
-    settingsWin.show();
-    settingsWin.focus();
-    settingsWin.webContents.send("switch-tab", safeTab);
-    return;
+  function placeGlow() {
+    if (!glowWin || glowWin.isDestroyed()) return;
+    const primary = screen.getPrimaryDisplay();
+    glowWin.setBounds(primary.bounds);
   }
-  settingsWin = new BrowserWindow({
-    width: 500,
-    height: 640,
-    title: "Media Island Settings & Remote • by sayandeep0212",
-    resizable: true,
-    autoHideMenuBar: true,
-    icon: path.join(__dirname, "icon.png"),
-    webPreferences: { preload: path.join(__dirname, "preload.js") }
-  });
-  settingsWin.loadFile("settings.html", { hash: safeTab });
-  settingsWin.on("closed", () => { settingsWin = null; });
-}
 
-function broadcastCommand(cmd, value = null) {
-  const payload = JSON.stringify({ type: "cmd", cmd, value });
-  for (const c of clients) {
-    if (c.readyState === 1) c.send(payload);
+  function createGlowWindow() {
+    const primary = screen.getPrimaryDisplay();
+    glowWin = new BrowserWindow({
+      x: primary.bounds.x,
+      y: primary.bounds.y,
+      width: primary.bounds.width,
+      height: primary.bounds.height,
+      frame: false,
+      transparent: true,
+      resizable: false,
+      hasShadow: false,
+      alwaysOnTop: true,
+      skipTaskbar: true,
+      focusable: false,
+    show: false,
+      webPreferences: {
+        preload: path.join(__dirname, "preload.js"),
+        backgroundThrottling: true
+      }
+    });
+    glowWin.setAlwaysOnTop(true, "screen-saver");
+    glowWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    glowWin.setIgnoreMouseEvents(true, { forward: true });
+    glowWin.loadFile("glow.html");
+    glowWin.webContents.on("did-finish-load", () => {
+      syncGlowVisibility();
+      if (glowWin && !glowWin.isDestroyed() && glowWin.isVisible()) {
+        glowWin.webContents.send("glow-config", settings.glow);
+        glowWin.webContents.send("accent-color", settings.accentColor);
+        if (lastMediaState) glowWin.webContents.send("state", lastMediaState);
+      }
+    });
+    screen.on("display-metrics-changed", placeGlow);
   }
-}
 
-function applyAccentColor(color) {
-  if (typeof color !== "string" || !/^#[0-9a-f]{6}$/i.test(color)) return;
-  settings.accentColor = color;
-  saveSettings();
-  if (win && !win.isDestroyed()) win.webContents.send("accent-color", color);
-  if (tray) tray.setImage(trayIcon());
-  if (settingsWin && !settingsWin.isDestroyed()) settingsWin.webContents.send("accent-color", color);
-  firebaseSync.pushSettings(settings);
-}
+  function applyGlowConfig(configUpdate, broadcast = true) {
+    if (!configUpdate || typeof configUpdate !== "object") return;
+    settings.glow = Object.assign(settings.glow || {}, configUpdate);
+    saveSettings();
+    updatePowerSave();
+    syncGlowVisibility();
 
-function applySticker(stickerId) {
-  settings.currentSticker = stickerId;
-  saveSettings();
-  if (win && !win.isDestroyed()) {
-    win.webContents.send("select-sticker", stickerId);
-  }
-  const payload = JSON.stringify({ type: "sticker", value: stickerId });
-  for (const c of clients) {
-    if (c.readyState === 1) c.send(payload);
-  }
-}
+      if (glowWin && !glowWin.isDestroyed() && glowWin.isVisible()) {
+        glowWin.webContents.send("glow-config", settings.glow);
+      }
 
-function startServer() {
-  const localMobileDir = path.join(__dirname, "mobile");
-  const parentMobileDir = path.join(__dirname, "..", "mobile");
-  const mobileDir = fs.existsSync(localMobileDir) ? localMobileDir : parentMobileDir;
+      if (win && !win.isDestroyed()) {
+        win.webContents.send("glow-config", settings.glow);
+      }
 
-  const mimeTypes = {
-    ".html": "text/html; charset=utf-8",
-    ".css": "text/css; charset=utf-8",
-    ".js": "application/javascript; charset=utf-8",
-    ".json": "application/json; charset=utf-8",
-    ".png": "image/png",
-    ".jpg": "image/jpeg",
-    ".jpeg": "image/jpeg",
-    ".svg": "image/svg+xml",
-    ".ico": "image/x-icon"
-  };
+      if (settingsWin && !settingsWin.isDestroyed()) {
+        settingsWin.webContents.send("glow-config", settings.glow);
+      }
 
-  const server = http.createServer((req, res) => {
-    let reqPath = req.url.split("?")[0];
-    if (reqPath === "/" || reqPath === "/mobile" || reqPath === "/remote") reqPath = "/index.html";
-    if (reqPath.startsWith("/mobile/")) reqPath = reqPath.replace("/mobile/", "/");
+      if (tray) {
+        createTray();
+      }
 
-    const filePath = path.join(mobileDir, path.normalize(reqPath).replace(/^(\.\.[\/\\])+/, ""));
-    const ext = path.extname(filePath).toLowerCase();
+      if (broadcast) {
+        const payload = JSON.stringify({ type: "glow", value: settings.glow });
+        for (const c of clients) {
+          if (c.readyState === 1) c.send(payload);
+        }
+        firebaseSync.pushSettings(settings);
+      }
+    }
 
-    fs.readFile(filePath, (err, content) => {
-      if (err) {
-        res.writeHead(404, { "Content-Type": "text/plain" });
-        res.end("404 Not Found");
+    function createWindow() {
+      win = new BrowserWindow({
+        width: 560, height: 190,
+        frame: false, transparent: true, resizable: false, hasShadow: false,
+        alwaysOnTop: true, skipTaskbar: true, focusable: false,
+        webPreferences: { preload: path.join(__dirname, "preload.js") }
+      });
+      win.setAlwaysOnTop(true, "screen-saver");
+      win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+      win.setIgnoreMouseEvents(true, { forward: true });
+      win.loadFile("index.html");
+      win.webContents.on("did-finish-load", () => win.webContents.send("accent-color", settings.accentColor));
+      place();
+      screen.on("display-metrics-changed", place);
+    }
+
+    function openSettings(tab = "tab-remote") {
+      const safeTab = (typeof tab === "string" && tab.trim()) ? tab.trim() : "tab-remote";
+      if (settingsWin && !settingsWin.isDestroyed()) {
+        settingsWin.show();
+        settingsWin.focus();
+        settingsWin.webContents.send("switch-tab", safeTab);
         return;
       }
-      res.writeHead(200, {
-        "Content-Type": mimeTypes[ext] || "application/octet-stream",
-        "Access-Control-Allow-Origin": "*"
+      settingsWin = new BrowserWindow({
+        width: 500,
+        height: 640,
+        title: "Media Island Settings & Remote • by sayandeep0212",
+        resizable: true,
+        autoHideMenuBar: true,
+        icon: path.join(__dirname, "icon.png"),
+        webPreferences: { preload: path.join(__dirname, "preload.js") }
       });
-      res.end(content);
-    });
-  });
-
-  const wss = new WebSocketServer({ server });
-
-  server.on("error", error => {
-    console.error("Media Island server error:", error);
-    if (error.code === "EADDRINUSE") {
-      dialog.showErrorBox(
-        "Media Island is already running",
-        "Another Media Island instance is already using port 47890. Close the other instance from the system tray, then launch Media Island again."
-      );
-    } else {
-      dialog.showErrorBox("Media Island server could not start", error.message);
-    }
-    app.quit();
-  });
-
-  wss.on("connection", ws => {
-    clients.add(ws);
-
-    // Send current accent color, glow configuration and active playback state immediately on connection
-    ws.send(JSON.stringify({ type: "accent-color", color: settings.accentColor }));
-    ws.send(JSON.stringify({ type: "glow", value: settings.glow }));
-    if (lastMediaState) {
-      ws.send(JSON.stringify(lastMediaState));
+      settingsWin.loadFile("settings.html", { hash: safeTab });
+      settingsWin.on("closed", () => { settingsWin = null; });
     }
 
-    ws.on("message", data => {
-      try {
-        const m = JSON.parse(data.toString());
-        if (m.type === "ping") return;
-
-        if (m.type === "cmd") {
-          if (m.cmd === "setAccentColor" && m.value) {
-            applyAccentColor(m.value);
-          } else if (m.cmd === "setSticker" && m.value) {
-            applySticker(m.value);
-          } else if (m.cmd === "setGlow" && m.value) {
-            applyGlowConfig(m.value);
-          } else if (m.cmd === "toggleGlow") {
-            applyGlowConfig({ enabled: !settings.glow.enabled });
-          } else if (m.cmd === "setGlowMode" && m.value) {
-            applyGlowConfig({ mode: m.value, enabled: true });
-          } else if (m.cmd === "setGlowColor" && m.value) {
-            applyGlowConfig({ customColor: m.value, mode: "custom", enabled: true });
-          } else if (m.cmd === "setGlowBrightness" && m.value != null) {
-            applyGlowConfig({ brightness: Number(m.value) || 100 });
-          } else if (m.cmd === "setGlowSleepBlackout") {
-            applyGlowConfig({ sleepBlackout: !!m.value });
-          } else if (m.cmd === "toggleSleepBlackout") {
-            applyGlowConfig({ sleepBlackout: !settings.glow.sleepBlackout });
-          } else {
-            broadcastCommand(m.cmd, m.value);
-          }
-          return;
-        }
-
-        // State update from Chrome extension
-        lastMediaState = m;
-        if (win && !win.isDestroyed()) win.webContents.send("state", m);
-        if (glowWin && !glowWin.isDestroyed()) glowWin.webContents.send("state", m);
-        updatePowerSave();
-        firebaseSync.pushState(m);
-
-        // Also broadcast state to any mobile clients connected directly over WebSocket
-        const broadcastMsg = JSON.stringify(m);
-        for (const c of clients) {
-          if (c !== ws && c.readyState === 1) c.send(broadcastMsg);
-        }
-      } catch {}
-    });
-
-    ws.on("close", () => clients.delete(ws));
-  });
-
-  server.listen(47890, "0.0.0.0", () => {
-    console.log(`Media Island server listening on 0.0.0.0:47890 (Local: http://${getLocalIp()}:47890)`);
-  });
-}
-
-// IPC Handlers
-ipcMain.on("cmd", (_e, command) => {
-  if (command.cmd === "setGlow") applyGlowConfig(command.value);
-  else if (command.cmd === "toggleGlow") applyGlowConfig({ enabled: !settings.glow.enabled });
-  else if (command.cmd === "setGlowMode") applyGlowConfig({ mode: command.value, enabled: true });
-  else if (command.cmd === "setGlowColor") applyGlowConfig({ customColor: command.value, mode: "custom", enabled: true });
-  else if (command.cmd === "setGlowBrightness") applyGlowConfig({ brightness: Number(command.value) || 100 });
-  else if (command.cmd === "setGlowSleepBlackout") applyGlowConfig({ sleepBlackout: !!command.value });
-  else if (command.cmd === "toggleSleepBlackout") applyGlowConfig({ sleepBlackout: !settings.glow.sleepBlackout });
-  else broadcastCommand(command.cmd, command.value);
-});
-
-ipcMain.on("openSettings", (_e, tab) => {
-  openSettings(tab || "tab-remote");
-});
-
-ipcMain.handle("glow:getConfig", () => settings.glow);
-ipcMain.handle("glow:setConfig", (_e, cfg) => {
-  applyGlowConfig(cfg);
-  return settings.glow;
-});
-ipcMain.handle("glow:toggle", () => {
-  applyGlowConfig({ enabled: !settings.glow.enabled });
-  return settings.glow.enabled;
-});
-ipcMain.handle("glow:toggleBlackout", () => {
-  applyGlowConfig({ sleepBlackout: !settings.glow.sleepBlackout });
-  return settings.glow.sleepBlackout;
-});
-
-ipcMain.on("interactive", (_e, on) => {
-  if (!win) return;
-  win.setIgnoreMouseEvents(!on, { forward: true });
-});
-
-ipcMain.on("drag", (event, { phase, screenX, screenY }) => {
-  if (!win || event.sender !== win.webContents) return;
-  if (phase === "start") {
-    const bounds = win.getBounds();
-    dragOffset = { x: screenX - bounds.x, y: screenY - bounds.y };
-  } else if (phase === "move" && dragOffset) {
-    const display = screen.getDisplayNearestPoint({ x: screenX, y: screenY });
-    const { x, y, width, height } = display.workArea;
-    const nextX = Math.min(x + width - win.getBounds().width, Math.max(x, screenX - dragOffset.x));
-    const nextY = Math.min(y + height - win.getBounds().height, Math.max(y, screenY - dragOffset.y));
-    win.setPosition(Math.round(nextX), Math.round(nextY));
-  } else if (phase === "end") {
-    dragOffset = null;
-  }
-});
-
-ipcMain.handle("settings:getAccentColor", () => settings.accentColor);
-ipcMain.handle("settings:setAccentColor", (_e, color) => {
-  applyAccentColor(color);
-  return settings.accentColor;
-});
-
-ipcMain.handle("settings:generateRoomCode", () => generateRoomCode());
-
-ipcMain.handle("settings:getRemoteConfig", async () => {
-  const localIp = getLocalIp();
-  const localUrl = `http://${localIp}:47890/?room=${encodeURIComponent(settings.roomCode)}`;
-  const globalUrl = `${GLOBAL_WEB_URL}/?room=${encodeURIComponent(settings.roomCode)}`;
-
-  let qrCodeDataUrl = "";
-  try {
-    qrCodeDataUrl = await QRCode.toDataURL(globalUrl, {
-      margin: 1,
-      width: 160,
-      color: { dark: "#000000ff", light: "#ffffffff" }
-    });
-  } catch {}
-
-  return {
-    roomCode: settings.roomCode,
-    localUrl,
-    globalUrl,
-    qrCodeDataUrl,
-    status: currentRemoteStatus
-  };
-});
-
-ipcMain.handle("settings:saveRemoteConfig", async (_e, { roomCode }) => {
-  if (roomCode && typeof roomCode === "string" && roomCode.trim()) {
-    settings.roomCode = roomCode.trim();
-  }
-  saveSettings();
-
-  firebaseSync.setup(settings.firebaseConfig, settings.roomCode);
-
-  const localIp = getLocalIp();
-  const localUrl = `http://${localIp}:47890/?room=${encodeURIComponent(settings.roomCode)}`;
-  const globalUrl = `${GLOBAL_WEB_URL}/?room=${encodeURIComponent(settings.roomCode)}`;
-
-  let qrCodeDataUrl = "";
-  try {
-    qrCodeDataUrl = await QRCode.toDataURL(globalUrl, {
-      margin: 1,
-      width: 160,
-      color: { dark: "#000000ff", light: "#ffffffff" }
-    });
-  } catch {}
-
-  return {
-    roomCode: settings.roomCode,
-    localUrl,
-    globalUrl,
-    qrCodeDataUrl,
-    status: currentRemoteStatus
-  };
-});
-
-app.whenReady().then(() => {
-  if (!app.hasSingleInstanceLock()) return;
-  if (process.platform === "darwin") app.dock.hide();
-  loadSettings();
-  createTray();
-  app.setLoginItemSettings({ openAtLogin: true });
-
-  // Initialize Firebase synchronization
-  firebaseSync.init(settings.firebaseConfig, settings.roomCode, {
-    onCommand: (cmd, value) => broadcastCommand(cmd, value),
-    onSetAccentColor: color => applyAccentColor(color),
-    onSetSticker: stickerId => applySticker(stickerId),
-    onSetGlow: cfg => applyGlowConfig(cfg),
-    onToggleGlow: () => applyGlowConfig({ enabled: !settings.glow.enabled }),
-    onStatusChange: (status, message) => {
-      currentRemoteStatus = { status, message };
-      if (settingsWin && !settingsWin.isDestroyed()) {
-        settingsWin.webContents.send("remote-status", currentRemoteStatus);
+    function broadcastCommand(cmd, value = null) {
+      const payload = JSON.stringify({ type: "cmd", cmd, value });
+      for (const c of clients) {
+        if (c.readyState === 1) c.send(payload);
       }
     }
-  });
 
-  startServer();
-  createGlowWindow();
-  createWindow();
-
-  powerMonitor.on("lock-screen", () => {
-    if (glowWin && !glowWin.isDestroyed()) {
-      glowWin.webContents.send("screen-locked", true);
+    function applyAccentColor(color) {
+      if (typeof color !== "string" || !/^#[0-9a-f]{6}$/i.test(color)) return;
+      settings.accentColor = color;
+      saveSettings();
+      if (win && !win.isDestroyed()) win.webContents.send("accent-color", color);
+      if (tray) tray.setImage(trayIcon());
+      if (settingsWin && !settingsWin.isDestroyed()) settingsWin.webContents.send("accent-color", color);
+      firebaseSync.pushSettings(settings);
     }
-  });
 
-  powerMonitor.on("unlock-screen", () => {
-    if (glowWin && !glowWin.isDestroyed()) {
-      glowWin.webContents.send("screen-locked", false);
+    function applySticker(stickerId) {
+      settings.currentSticker = stickerId;
+      saveSettings();
+      if (win && !win.isDestroyed()) {
+        win.webContents.send("select-sticker", stickerId);
+      }
+      const payload = JSON.stringify({ type: "sticker", value: stickerId });
+      for (const c of clients) {
+        if (c.readyState === 1) c.send(payload);
+      }
     }
-  });
-});
 
-app.on("second-instance", () => {
-  if (settingsWin && !settingsWin.isDestroyed()) {
-    settingsWin.show();
-    settingsWin.focus();
-  }
-});
-app.on("window-all-closed", () => {});
+    function startServer() {
+      const localMobileDir = path.join(__dirname, "mobile");
+      const parentMobileDir = path.join(__dirname, "..", "mobile");
+      const mobileDir = fs.existsSync(localMobileDir) ? localMobileDir : parentMobileDir;
+
+      const mimeTypes = {
+        ".html": "text/html; charset=utf-8",
+        ".css": "text/css; charset=utf-8",
+        ".js": "application/javascript; charset=utf-8",
+        ".json": "application/json; charset=utf-8",
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".svg": "image/svg+xml",
+        ".ico": "image/x-icon"
+      };
+
+      const server = http.createServer((req, res) => {
+        let reqPath = req.url.split("?")[0];
+        if (reqPath === "/" || reqPath === "/mobile" || reqPath === "/remote") reqPath = "/index.html";
+        if (reqPath.startsWith("/mobile/")) reqPath = reqPath.replace("/mobile/", "/");
+
+        const filePath = path.join(mobileDir, path.normalize(reqPath).replace(/^(\.\.[\/\\])+/, ""));
+        const ext = path.extname(filePath).toLowerCase();
+
+        fs.readFile(filePath, (err, content) => {
+          if (err) {
+            res.writeHead(404, { "Content-Type": "text/plain" });
+            res.end("404 Not Found");
+            return;
+          }
+          res.writeHead(200, {
+            "Content-Type": mimeTypes[ext] || "application/octet-stream",
+            "Access-Control-Allow-Origin": "*"
+          });
+          res.end(content);
+        });
+      });
+
+      const wss = new WebSocketServer({ server });
+
+      server.on("error", error => {
+        console.error("Media Island server error:", error);
+        if (error.code === "EADDRINUSE") {
+          dialog.showErrorBox(
+            "Media Island is already running",
+            "Another Media Island instance is already using port 47890. Close the other instance from the system tray, then launch Media Island again."
+          );
+        } else {
+          dialog.showErrorBox("Media Island server could not start", error.message);
+        }
+        app.quit();
+      });
+
+      wss.on("connection", ws => {
+        clients.add(ws);
+
+        // Send current accent color, glow configuration and active playback state immediately on connection
+        ws.send(JSON.stringify({ type: "accent-color", color: settings.accentColor }));
+        ws.send(JSON.stringify({ type: "glow", value: settings.glow }));
+        if (lastMediaState) {
+          ws.send(JSON.stringify(lastMediaState));
+        }
+
+        ws.on("message", data => {
+          try {
+            const m = JSON.parse(data.toString());
+            if (m.type === "ping") return;
+
+            if (m.type === "cmd") {
+              if (m.cmd === "setAccentColor" && m.value) {
+                applyAccentColor(m.value);
+              } else if (m.cmd === "setSticker" && m.value) {
+                applySticker(m.value);
+              } else if (m.cmd === "setGlow" && m.value) {
+                applyGlowConfig(m.value);
+              } else if (m.cmd === "toggleGlow") {
+                applyGlowConfig({ enabled: !settings.glow.enabled });
+              } else if (m.cmd === "setGlowMode" && m.value) {
+                applyGlowConfig({ mode: m.value, enabled: true });
+              } else if (m.cmd === "setGlowColor" && m.value) {
+                applyGlowConfig({ customColor: m.value, mode: "custom", enabled: true });
+              } else if (m.cmd === "setGlowBrightness" && m.value != null) {
+                applyGlowConfig({ brightness: Number(m.value) || 100 });
+              } else if (m.cmd === "setGlowSleepBlackout") {
+                applyGlowConfig({ sleepBlackout: !!m.value });
+              } else if (m.cmd === "toggleSleepBlackout") {
+                applyGlowConfig({ sleepBlackout: !settings.glow.sleepBlackout });
+              } else {
+                broadcastCommand(m.cmd, m.value);
+              }
+              return;
+            }
+
+            // State update from Chrome extension
+            lastMediaState = m;
+            if (win && !win.isDestroyed()) win.webContents.send("state", m);
+            if (glowWin && !glowWin.isDestroyed() && glowWin.isVisible()) glowWin.webContents.send("state", m);
+            updatePowerSave();
+            firebaseSync.pushState(m);
+
+            // Also broadcast state to any mobile clients connected directly over WebSocket
+            const broadcastMsg = JSON.stringify(m);
+            for (const c of clients) {
+              if (c !== ws && c.readyState === 1) c.send(broadcastMsg);
+            }
+          } catch { }
+        });
+
+        ws.on("close", () => clients.delete(ws));
+      });
+
+      server.listen(47890, "0.0.0.0", () => {
+        console.log(`Media Island server listening on 0.0.0.0:47890 (Local: http://${getLocalIp()}:47890)`);
+      });
+    }
+
+    // IPC Handlers
+    ipcMain.on("cmd", (_e, command) => {
+      if (command.cmd === "setGlow") applyGlowConfig(command.value);
+      else if (command.cmd === "toggleGlow") applyGlowConfig({ enabled: !settings.glow.enabled });
+      else if (command.cmd === "setGlowMode") applyGlowConfig({ mode: command.value, enabled: true });
+      else if (command.cmd === "setGlowColor") applyGlowConfig({ customColor: command.value, mode: "custom", enabled: true });
+      else if (command.cmd === "setGlowBrightness") applyGlowConfig({ brightness: Number(command.value) || 100 });
+      else if (command.cmd === "setGlowSleepBlackout") applyGlowConfig({ sleepBlackout: !!command.value });
+      else if (command.cmd === "toggleSleepBlackout") applyGlowConfig({ sleepBlackout: !settings.glow.sleepBlackout });
+      else broadcastCommand(command.cmd, command.value);
+    });
+
+    ipcMain.on("openSettings", (_e, tab) => {
+      openSettings(tab || "tab-remote");
+    });
+
+    ipcMain.handle("glow:getConfig", () => settings.glow);
+    ipcMain.handle("glow:setConfig", (_e, cfg) => {
+      applyGlowConfig(cfg);
+      return settings.glow;
+    });
+    ipcMain.handle("glow:toggle", () => {
+      applyGlowConfig({ enabled: !settings.glow.enabled });
+      return settings.glow.enabled;
+    });
+    ipcMain.handle("glow:toggleBlackout", () => {
+      applyGlowConfig({ sleepBlackout: !settings.glow.sleepBlackout });
+      return settings.glow.sleepBlackout;
+    });
+
+    ipcMain.on("interactive", (_e, on) => {
+      if (!win) return;
+      win.setIgnoreMouseEvents(!on, { forward: true });
+    });
+
+    ipcMain.on("drag", (event, { phase, screenX, screenY }) => {
+      if (!win || event.sender !== win.webContents) return;
+      if (phase === "start") {
+        const bounds = win.getBounds();
+        dragOffset = { x: screenX - bounds.x, y: screenY - bounds.y };
+      } else if (phase === "move" && dragOffset) {
+        const display = screen.getDisplayNearestPoint({ x: screenX, y: screenY });
+        const { x, y, width, height } = display.workArea;
+        const nextX = Math.min(x + width - win.getBounds().width, Math.max(x, screenX - dragOffset.x));
+        const nextY = Math.min(y + height - win.getBounds().height, Math.max(y, screenY - dragOffset.y));
+        win.setPosition(Math.round(nextX), Math.round(nextY));
+      } else if (phase === "end") {
+        dragOffset = null;
+      }
+    });
+
+    ipcMain.handle("settings:getAccentColor", () => settings.accentColor);
+    ipcMain.handle("settings:setAccentColor", (_e, color) => {
+      applyAccentColor(color);
+      return settings.accentColor;
+    });
+
+    ipcMain.handle("settings:generateRoomCode", () => generateRoomCode());
+
+    ipcMain.handle("settings:getRemoteConfig", async () => {
+      const localIp = getLocalIp();
+      const localUrl = `http://${localIp}:47890/?room=${encodeURIComponent(settings.roomCode)}`;
+      const globalUrl = `${GLOBAL_WEB_URL}/?room=${encodeURIComponent(settings.roomCode)}`;
+
+      let qrCodeDataUrl = "";
+      try {
+        qrCodeDataUrl = await QRCode.toDataURL(globalUrl, {
+          margin: 1,
+          width: 160,
+          color: { dark: "#000000ff", light: "#ffffffff" }
+        });
+      } catch { }
+
+      return {
+        roomCode: settings.roomCode,
+        localUrl,
+        globalUrl,
+        qrCodeDataUrl,
+        status: currentRemoteStatus
+      };
+    });
+
+    ipcMain.handle("settings:saveRemoteConfig", async (_e, { roomCode }) => {
+      if (roomCode && typeof roomCode === "string" && roomCode.trim()) {
+        settings.roomCode = roomCode.trim();
+      }
+      saveSettings();
+
+      firebaseSync.setup(settings.firebaseConfig, settings.roomCode);
+
+      const localIp = getLocalIp();
+      const localUrl = `http://${localIp}:47890/?room=${encodeURIComponent(settings.roomCode)}`;
+      const globalUrl = `${GLOBAL_WEB_URL}/?room=${encodeURIComponent(settings.roomCode)}`;
+
+      let qrCodeDataUrl = "";
+      try {
+        qrCodeDataUrl = await QRCode.toDataURL(globalUrl, {
+          margin: 1,
+          width: 160,
+          color: { dark: "#000000ff", light: "#ffffffff" }
+        });
+      } catch { }
+
+      return {
+        roomCode: settings.roomCode,
+        localUrl,
+        globalUrl,
+        qrCodeDataUrl,
+        status: currentRemoteStatus
+      };
+    });
+
+    app.whenReady().then(() => {
+      if (!app.hasSingleInstanceLock()) return;
+      if (process.platform === "darwin") app.dock.hide();
+      loadSettings();
+      createTray();
+      app.setLoginItemSettings({ openAtLogin: true });
+
+      // Initialize Firebase synchronization
+      firebaseSync.init(settings.firebaseConfig, settings.roomCode, {
+        onCommand: (cmd, value) => broadcastCommand(cmd, value),
+        onSetAccentColor: color => applyAccentColor(color),
+        onSetSticker: stickerId => applySticker(stickerId),
+        onSetGlow: cfg => applyGlowConfig(cfg),
+        onToggleGlow: () => applyGlowConfig({ enabled: !settings.glow.enabled }),
+        onStatusChange: (status, message) => {
+          currentRemoteStatus = { status, message };
+          if (settingsWin && !settingsWin.isDestroyed()) {
+            settingsWin.webContents.send("remote-status", currentRemoteStatus);
+          }
+        }
+      });
+
+      startServer();
+      createGlowWindow();
+      createWindow();
+
+      powerMonitor.on("lock-screen", () => {
+        if (glowWin && !glowWin.isDestroyed()) {
+          glowWin.webContents.send("screen-locked", true);
+        }
+      });
+
+      powerMonitor.on("unlock-screen", () => {
+        if (glowWin && !glowWin.isDestroyed()) {
+          glowWin.webContents.send("screen-locked", false);
+        }
+      });
+    });
+
+    app.on("second-instance", () => {
+      if (settingsWin && !settingsWin.isDestroyed()) {
+        settingsWin.show();
+        settingsWin.focus();
+      }
+    });
+    app.on("window-all-closed", () => { });
