@@ -73,7 +73,7 @@
   const glowBrightnessValue = $("glowBrightnessValue");
 
   let currentGlow = {
-    enabled: true,
+    enabled: false,
     mode: "aurora",
     brightness: 100,
     sleepBlackout: false,
