@@ -70,6 +70,16 @@ function setup(firebaseConfig, roomCode) {
         callbacks.onSetAccentColor(data.value);
       } else if (data.cmd === "setSticker" && data.value) {
         callbacks.onSetSticker(data.value);
+      } else if (data.cmd === "setGlow" && data.value) {
+        if (callbacks.onSetGlow) callbacks.onSetGlow(data.value);
+      } else if (data.cmd === "toggleGlow") {
+        if (callbacks.onToggleGlow) callbacks.onToggleGlow();
+      } else if (data.cmd === "setGlowMode" && data.value) {
+        if (callbacks.onSetGlow) callbacks.onSetGlow({ mode: data.value, enabled: true });
+      } else if (data.cmd === "setGlowColor" && data.value) {
+        if (callbacks.onSetGlow) callbacks.onSetGlow({ customColor: data.value, mode: "custom", enabled: true });
+      } else if (data.cmd === "setGlowSleepBlackout") {
+        if (callbacks.onSetGlow) callbacks.onSetGlow({ sleepBlackout: !!data.value });
       } else {
         callbacks.onCommand(data.cmd, data.value);
       }
@@ -78,7 +88,7 @@ function setup(firebaseConfig, roomCode) {
       callbacks.onStatusChange("error", error.message);
     });
 
-    // Also listen for settings changes (stickers & accent color) from mobile
+    // Also listen for settings changes (stickers, glow & accent color) from mobile
     let isInitialSettingsSnapshot = true;
     const settingsRef = ref(db, `rooms/${currentRoom}/settings`);
     settingsListener = onValue(settingsRef, snapshot => {
@@ -88,12 +98,16 @@ function setup(firebaseConfig, roomCode) {
       if (isInitialSettingsSnapshot) {
         isInitialSettingsSnapshot = false;
         if (data.currentSticker) lastSyncedSticker = data.currentSticker;
+        if (data.glow && callbacks.onSetGlow) callbacks.onSetGlow(data.glow);
         return;
       }
 
       if (data.currentSticker && data.currentSticker !== lastSyncedSticker) {
         lastSyncedSticker = data.currentSticker;
         callbacks.onSetSticker(data.currentSticker);
+      }
+      if (data.glow && callbacks.onSetGlow) {
+        callbacks.onSetGlow(data.glow);
       }
     });
 
@@ -164,6 +178,9 @@ function pushSettings(settings) {
   };
   if (settings.currentSticker) {
     payload.currentSticker = settings.currentSticker;
+  }
+  if (settings.glow) {
+    payload.glow = settings.glow;
   }
   update(settingsRef, payload).catch(err => {
     console.error("[FirebaseSync] pushSettings error:", err.message);

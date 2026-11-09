@@ -61,6 +61,25 @@
   const stickerRandomBtn = $("stickerRandomBtn");
   let currentStickerId = "auto";
 
+  // Neon Edge Lighting Studio Elements
+  const glowToggle = $("glowToggle");
+  const blackoutCard = $("blackoutCard");
+  const toggleBlackoutBtn = $("toggleBlackoutBtn");
+  const blackoutBtnLabel = $("blackoutBtnLabel");
+  const activeGlowModeLabel = $("activeGlowModeLabel");
+  const glowPresets = $("glowPresets");
+  const glowAccentChipPreview = $("glowAccentChipPreview");
+  const glowBrightnessSlider = $("glowBrightnessSlider");
+  const glowBrightnessValue = $("glowBrightnessValue");
+
+  let currentGlow = {
+    enabled: true,
+    mode: "aurora",
+    brightness: 100,
+    sleepBlackout: false,
+    customColor: "#00f0ff"
+  };
+
   const ICON_PLAY = '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 6.82v10.36c0 .79.87 1.27 1.54.84l8.14-5.18c.62-.39.62-1.29 0-1.69L9.54 5.98C8.87 5.55 8 6.03 8 6.82z"/></svg>';
   const ICON_PAUSE = '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 6c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1s1-.45 1-1V7c0-.55-.45-1-1-1zm8 0c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1s1-.45 1-1V7c0-.55-.45-1-1-1z"/></svg>';
 
@@ -409,6 +428,90 @@
     });
   }
 
+  // ----------------------------------------------------
+  // Neon Edge Lighting Studio Logic
+  // ----------------------------------------------------
+  function applyGlowUI(config, isUserAction = false) {
+    if (!config) return;
+    currentGlow = Object.assign(currentGlow, config);
+
+    if (glowToggle) glowToggle.checked = !!currentGlow.enabled;
+
+    if (blackoutCard) blackoutCard.classList.toggle("active", !!currentGlow.sleepBlackout);
+    if (blackoutBtnLabel) blackoutBtnLabel.textContent = currentGlow.sleepBlackout ? "Wake Screen" : "Activate Blackout";
+
+    const modeLabels = {
+      aurora: "Cyberpunk Aurora",
+      accent: "Match Island",
+      cyan: "Electric Cyan",
+      pink: "Neon Pink",
+      sunset: "Sunset Amber",
+      emerald: "Emerald Matrix",
+      purple: "Purple Dream"
+    };
+
+    if (activeGlowModeLabel) {
+      activeGlowModeLabel.textContent = modeLabels[currentGlow.mode] || currentGlow.mode;
+    }
+
+    if (glowPresets) {
+      glowPresets.querySelectorAll(".glow-chip").forEach(chip => {
+        chip.classList.toggle("active", chip.dataset.mode === currentGlow.mode);
+      });
+    }
+
+    if (glowBrightnessSlider) glowBrightnessSlider.value = currentGlow.brightness || 100;
+    if (glowBrightnessValue) glowBrightnessValue.textContent = `${currentGlow.brightness || 100}%`;
+    if (glowAccentChipPreview) glowAccentChipPreview.style.background = currentAccentColor;
+
+    if (isUserAction) {
+      vibrate(25);
+      sendCommand("setGlow", currentGlow);
+      if (db && roomCode) {
+        db.ref(`rooms/${roomCode}/settings/glow`).update({
+          ...currentGlow,
+          updatedAt: Date.now()
+        }).catch(() => {});
+      }
+    }
+  }
+
+  if (glowToggle) {
+    glowToggle.addEventListener("change", () => {
+      applyGlowUI({ enabled: glowToggle.checked }, true);
+    });
+  }
+
+  if (toggleBlackoutBtn) {
+    toggleBlackoutBtn.addEventListener("click", () => {
+      applyGlowUI({ sleepBlackout: !currentGlow.sleepBlackout }, true);
+    });
+  }
+
+  if (glowPresets) {
+    glowPresets.addEventListener("click", e => {
+      const chip = e.target.closest(".glow-chip");
+      if (!chip) return;
+      const mode = chip.dataset.mode;
+      if (mode) {
+        applyGlowUI({ mode, enabled: true }, true);
+      }
+    });
+  }
+
+  if (glowBrightnessSlider) {
+    glowBrightnessSlider.addEventListener("input", e => {
+      const val = Number(e.target.value) || 100;
+      if (glowBrightnessValue) glowBrightnessValue.textContent = `${val}%`;
+      currentGlow.brightness = val;
+    });
+
+    glowBrightnessSlider.addEventListener("change", e => {
+      const val = Number(e.target.value) || 100;
+      applyGlowUI({ brightness: val }, true);
+    });
+  }
+
   // Modal Dialog Events
   settingsBtn.addEventListener("click", () => {
     roomCodeInput.value = roomCode || "";
@@ -532,6 +635,7 @@
           if (val) {
             if (val.accentColor) setAccentColor(val.accentColor, true);
             if (val.currentSticker) chooseSticker(val.currentSticker, false);
+            if (val.glow) applyGlowUI(val.glow, false);
           }
         });
 
@@ -575,6 +679,8 @@
               setAccentColor(data.color, true);
             } else if (data.type === "sticker") {
               chooseSticker(data.value, false);
+            } else if (data.type === "glow") {
+              applyGlowUI(data.value, false);
             }
           } catch {}
         };

@@ -340,6 +340,7 @@
 
   <div class="tabs">
     <button class="tab-btn active" data-tab="tab-color">Appearance</button>
+    <button class="tab-btn" data-tab="tab-glow">Neon Edge Glow & Sleep</button>
     <button class="tab-btn" data-tab="tab-remote">Phone Remote & Pairing</button>
   </div>
 
@@ -375,7 +376,57 @@
     </div>
   </div>
 
-  <!-- Tab 2: Phone Remote & Firebase -->
+  <!-- Tab 2: Neon Edge Glow & Ambient Sleep -->
+  <div id="tab-glow" class="tab-content">
+    <div class="card">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+        <div class="card-title" style="margin-bottom: 0;">Neon Screen Edge Lighting</div>
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+          <input type="checkbox" id="desktopGlowEnabled" style="width: 18px; height: 18px; accent-color: var(--accent);">
+          <span style="font-size: 13px; font-weight: 600;">Enable Glow</span>
+        </label>
+      </div>
+      <div class="card-desc">Draws an ambient, luminous neon perimeter aura around all 4 edges of your display that pulses and dims with the music beat.</div>
+
+      <div style="margin: 16px 0 10px; font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Glow Color Themes</div>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;" id="desktopGlowThemes">
+        <button class="btn glow-theme-btn active" data-mode="aurora" style="display: flex; align-items: center; gap: 6px;">
+          <span style="width: 12px; height: 12px; border-radius: 50%; background: linear-gradient(135deg, #7928ca, #00f0ff, #ff8a3d, #ff2a6d); display: inline-block;"></span>
+          Cyberpunk Aurora
+        </button>
+        <button class="btn glow-theme-btn" data-mode="accent" style="display: flex; align-items: center; gap: 6px;">
+          <span id="desktopGlowAccentSample" style="width: 12px; height: 12px; border-radius: 50%; background: var(--accent); display: inline-block;"></span>
+          Match Sound Wave
+        </button>
+        <button class="btn glow-theme-btn" data-mode="cyan">Cyan</button>
+        <button class="btn glow-theme-btn" data-mode="pink">Pink</button>
+        <button class="btn glow-theme-btn" data-mode="sunset">Sunset</button>
+        <button class="btn glow-theme-btn" data-mode="emerald">Emerald</button>
+        <button class="btn glow-theme-btn" data-mode="purple">Purple</button>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 12px; margin-top: 14px;">
+        <span style="font-size: 12px; color: var(--text-muted);">Glow Brightness:</span>
+        <input type="range" id="desktopGlowBrightness" min="30" max="150" value="100" style="flex: 1; accent-color: var(--accent);">
+        <span id="desktopGlowBrightnessText" style="font-family: monospace; font-size: 12px; width: 40px; text-align: right;">100%</span>
+      </div>
+    </div>
+
+    <!-- Blackout Sleep Card -->
+    <div class="card" style="border-left: 3px solid #00f0ff;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+        <div class="card-title" style="margin-bottom: 0;">🌙 Ambient Sleep Screen (Blackout Mode)</div>
+        <span style="background: rgba(0, 240, 255, 0.2); color: #00f0ff; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 6px;">OLED & Ambient</span>
+      </div>
+      <div class="card-desc">Dims your entire laptop monitor to pitch black while music continues playing, leaving only the glowing neon border pulsing in the dark. Move mouse or press any key to wake.</div>
+
+      <button id="desktopToggleBlackoutBtn" class="btn" style="background: rgba(0, 240, 255, 0.15); border: 1px solid #00f0ff; color: #00f0ff; font-weight: 700; width: 100%; padding: 10px;">
+        🌙 Activate Blackout Sleep Now
+      </button>
+    </div>
+  </div>
+
+  <!-- Tab 3: Phone Remote & Firebase -->
   <div id="tab-remote" class="tab-content">
     <div class="card">
       <div class="card-title">Scan to Link Mobile Remote (WhatsApp-Style Pairing)</div>
@@ -473,6 +524,7 @@
       document.documentElement.style.setProperty("--accent", color);
       accentPicker.value = color;
       hexDisplay.textContent = color.toUpperCase();
+      if (desktopGlowAccentSample) desktopGlowAccentSample.style.background = color;
     }
 
     window.island.getAccentColor().then(updateAccent);
@@ -577,6 +629,80 @@
         saveStatus.style.color = "#ef4444";
       }
     });
+
+    // Glow Configuration Handlers
+    const desktopGlowEnabled = $("desktopGlowEnabled");
+    const desktopGlowThemes = $("desktopGlowThemes");
+    const desktopGlowAccentSample = $("desktopGlowAccentSample");
+    const desktopGlowBrightness = $("desktopGlowBrightness");
+    const desktopGlowBrightnessText = $("desktopGlowBrightnessText");
+    const desktopToggleBlackoutBtn = $("desktopToggleBlackoutBtn");
+
+    function renderGlowConfig(config) {
+      if (!config) return;
+      if (desktopGlowEnabled) desktopGlowEnabled.checked = !!config.enabled;
+      if (desktopGlowThemes) {
+        desktopGlowThemes.querySelectorAll(".glow-theme-btn").forEach(btn => {
+          btn.classList.toggle("active", btn.dataset.mode === config.mode);
+        });
+      }
+      if (desktopGlowBrightness) {
+        desktopGlowBrightness.value = config.brightness || 100;
+        desktopGlowBrightnessText.textContent = `${config.brightness || 100}%`;
+      }
+      if (desktopToggleBlackoutBtn) {
+        if (config.sleepBlackout) {
+          desktopToggleBlackoutBtn.textContent = "☀️ Wake Screen (Exit Blackout)";
+          desktopToggleBlackoutBtn.style.background = "#00f0ff";
+          desktopToggleBlackoutBtn.style.color = "#000";
+        } else {
+          desktopToggleBlackoutBtn.textContent = "🌙 Activate Blackout Sleep Now";
+          desktopToggleBlackoutBtn.style.background = "rgba(0, 240, 255, 0.15)";
+          desktopToggleBlackoutBtn.style.color = "#00f0ff";
+        }
+      }
+    }
+
+    if (window.island.getGlowConfig) {
+      window.island.getGlowConfig().then(renderGlowConfig);
+    }
+    if (window.island.onGlowConfig) {
+      window.island.onGlowConfig(renderGlowConfig);
+    }
+
+    if (desktopGlowEnabled) {
+      desktopGlowEnabled.addEventListener("change", () => {
+        window.island.setGlowConfig({ enabled: desktopGlowEnabled.checked });
+      });
+    }
+
+    if (desktopGlowThemes) {
+      desktopGlowThemes.addEventListener("click", e => {
+        const btn = e.target.closest(".glow-theme-btn");
+        if (!btn) return;
+        const mode = btn.dataset.mode;
+        if (mode) {
+          window.island.setGlowConfig({ mode, enabled: true });
+        }
+      });
+    }
+
+    if (desktopGlowBrightness) {
+      desktopGlowBrightness.addEventListener("input", e => {
+        const val = Number(e.target.value) || 100;
+        desktopGlowBrightnessText.textContent = `${val}%`;
+      });
+      desktopGlowBrightness.addEventListener("change", e => {
+        const val = Number(e.target.value) || 100;
+        window.island.setGlowConfig({ brightness: val });
+      });
+    }
+
+    if (desktopToggleBlackoutBtn) {
+      desktopToggleBlackoutBtn.addEventListener("click", () => {
+        window.island.toggleSleepBlackout();
+      });
+    }
   </script>
 </body>
 </html>

@@ -347,6 +347,79 @@
     </div>
   </section>
 
+  <!-- Neon Edge Lighting Studio -->
+  <section class="neon-glow-studio">
+    <div class="section-title">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span class="neon-sparkle-icon">✨</span>
+        <span>Neon Edge Lighting</span>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="glowToggle" checked>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <p class="section-desc">Luminous screen-border aura that pulses and dims with the music beat.</p>
+
+    <!-- Ambient Sleep / Screen Blackout Card -->
+    <div class="blackout-card" id="blackoutCard">
+      <div class="blackout-info">
+        <div class="blackout-title">
+          <span>🌙 Ambient Sleep Blackout</span>
+          <span class="beta-badge">Special</span>
+        </div>
+        <p class="blackout-desc">Turns laptop screen pitch black while music plays, keeping only the glowing neon border pulsing in the dark. Move mouse to wake.</p>
+      </div>
+      <button id="toggleBlackoutBtn" class="blackout-btn" title="Toggle Laptop Screen Blackout">
+        <span id="blackoutBtnLabel">Activate Blackout</span>
+      </button>
+    </div>
+
+    <!-- Glow Color Presets -->
+    <div class="glow-modes-label">
+      <span>Color Theme</span>
+      <span id="activeGlowModeLabel" class="glow-theme-tag">Cyberpunk Aurora</span>
+    </div>
+
+    <div class="glow-presets" id="glowPresets">
+      <div class="glow-chip active" data-mode="aurora" title="Cyberpunk Aurora (Cyan / Purple / Pink / Gold)">
+        <div class="chip-preview aurora"></div>
+        <span>Aurora</span>
+      </div>
+      <div class="glow-chip" data-mode="accent" title="Match Sound Wave Color">
+        <div class="chip-preview accent" id="glowAccentChipPreview"></div>
+        <span>Match Island</span>
+      </div>
+      <div class="glow-chip" data-mode="cyan" title="Electric Cyan">
+        <div class="chip-preview" style="background: #00f0ff; box-shadow: 0 0 10px #00f0ff;"></div>
+        <span>Cyan</span>
+      </div>
+      <div class="glow-chip" data-mode="pink" title="Neon Pink">
+        <div class="chip-preview" style="background: #ff2a6d; box-shadow: 0 0 10px #ff2a6d;"></div>
+        <span>Pink</span>
+      </div>
+      <div class="glow-chip" data-mode="sunset" title="Sunset Amber">
+        <div class="chip-preview" style="background: #ff8a3d; box-shadow: 0 0 10px #ff8a3d;"></div>
+        <span>Sunset</span>
+      </div>
+      <div class="glow-chip" data-mode="emerald" title="Emerald Matrix">
+        <div class="chip-preview" style="background: #05ffa1; box-shadow: 0 0 10px #05ffa1;"></div>
+        <span>Emerald</span>
+      </div>
+      <div class="glow-chip" data-mode="purple" title="Purple Dream">
+        <div class="chip-preview" style="background: #b537f2; box-shadow: 0 0 10px #b537f2;"></div>
+        <span>Purple</span>
+      </div>
+    </div>
+
+    <!-- Brightness Slider -->
+    <div class="glow-brightness-row">
+      <span class="slider-label">Glow Intensity</span>
+      <input type="range" id="glowBrightnessSlider" min="30" max="150" value="100" class="seek-slider">
+      <span id="glowBrightnessValue" class="slider-val">100%</span>
+    </div>
+  </section>
+
   <!-- Mobile Footer & Copyright -->
   <footer class="mobile-footer">
     <div class="footer-meta">

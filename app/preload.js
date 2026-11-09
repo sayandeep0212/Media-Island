@@ -14,5 +14,10 @@ contextBridge.exposeInMainWorld("island", {
   interactive: on => ipcRenderer.send("interactive", on),
   openSettings: tab => ipcRenderer.send("openSettings", tab),
   onSwitchTab: cb => ipcRenderer.on("switch-tab", (_e, tab) => cb(tab)),
-  onSelectSticker: cb => ipcRenderer.on("select-sticker", (_e, id) => cb(id))
+  onSelectSticker: cb => ipcRenderer.on("select-sticker", (_e, id) => cb(id)),
+  onGlowConfig: cb => ipcRenderer.on("glow-config", (_e, cfg) => cb(cfg)),
+  getGlowConfig: () => ipcRenderer.invoke("glow:getConfig"),
+  setGlowConfig: cfg => ipcRenderer.invoke("glow:setConfig", cfg),
+  toggleGlow: () => ipcRenderer.invoke("glow:toggle"),
+  toggleSleepBlackout: () => ipcRenderer.invoke("glow:toggleBlackout")
 });
