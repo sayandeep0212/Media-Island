@@ -1,5 +1,6 @@
 {
   "name": "media-island-root",
+  "version": "1.2.0",
   "private": true,
   "repository": {
     "type": "git",

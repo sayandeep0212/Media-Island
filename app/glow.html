@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <title>Media Island Neon Edge Glow</title>
@@ -12,7 +13,8 @@
       -webkit-user-drag: none;
     }
 
-    html, body {
+    html,
+    body {
       width: 100vw;
       height: 100vh;
       overflow: hidden;
@@ -21,35 +23,48 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
 
-    /* Ambient Blackout / Screen Sleep Layer */
+    :root {
+      --glow-accent: #00f0ff;
+      --glow-depth: 56px;
+      /* how far the soft light reaches inward */
+      --corner: 20px;
+      /* matches rounded display corners */
+      --rim: 2px;
+      /* crisp neon line thickness */
+      --halo: 26px;
+      /* thickness of the blurred halo band */
+      --ring-gradient: conic-gradient(from 0deg, #b537f2, #00f0ff, #0070f3, #ff8a3d, #ff2a6d, #b537f2);
+    }
+
+    /* ---------- Sleep / blackout layer ---------- */
     #blackoutLayer {
       position: fixed;
       inset: 0;
-      background: transparent;
+      background: #000;
       opacity: 0;
+      display: none;
       transition: opacity 300ms ease;
       z-index: 1;
       pointer-events: none;
-      display: none;
     }
 
     #blackoutLayer.active {
       display: block;
-      background: #000000;
       opacity: 1;
+      pointer-events: auto;
+      /* lets click / key wake the screen */
     }
 
-    /* Blackout Sleep Info HUD (faintly appears in dark mode) */
     .sleep-hud {
       position: absolute;
       bottom: 28px;
       right: 32px;
-      color: rgba(255, 255, 255, 0.45);
-      font-size: 12px;
-      letter-spacing: 0.5px;
       display: flex;
       align-items: center;
       gap: 10px;
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 12px;
+      letter-spacing: 0.4px;
       opacity: 0;
       transition: opacity 300ms ease;
       z-index: 5;
@@ -63,18 +78,33 @@
       width: 7px;
       height: 7px;
       border-radius: 50%;
-      background: var(--glow-accent, #00f0ff);
-      box-shadow: 0 0 6px var(--glow-accent, #00f0ff);
+      background: var(--glow-accent);
+      box-shadow: 0 0 8px var(--glow-accent), 0 0 18px var(--glow-accent);
+      animation: pulseDot 2.4s infinite ease-in-out;
     }
 
-    /* Neon Perimeter Edge Glow Container - Zero-lag static hardware composite */
+    @keyframes pulseDot {
+
+      0%,
+      100% {
+        opacity: 0.3;
+        transform: scale(0.9);
+      }
+
+      50% {
+        opacity: 1;
+        transform: scale(1.15);
+      }
+    }
+
+    /* ---------- Glow container ---------- */
     #glowContainer {
       position: fixed;
       inset: 0;
       z-index: 10;
       pointer-events: none;
-      opacity: 0;
       display: none;
+      opacity: 0;
       transition: opacity 350ms ease;
       will-change: opacity;
       transform: translateZ(0);
@@ -85,85 +115,175 @@
       opacity: var(--current-opacity, 0.85);
     }
 
-    /* Static multi-stop hardware-accelerated gradients (Zero CPU / 0 FPS idle) */
+    /* Layer 1: soft inward light, one gradient per edge (static, zero idle cost) */
     .edge {
       position: absolute;
       pointer-events: none;
-      will-change: opacity;
-      transform: translateZ(0);
+      opacity: 0.7;
     }
 
-    /* Top Edge */
     .edge-top {
       top: 0;
       left: 0;
       right: 0;
-      height: var(--glow-depth, 55px);
+      height: var(--glow-depth);
       background: linear-gradient(to bottom,
-        var(--edge-top-color, rgba(0, 240, 255, 0.95)) 0%,
-        var(--edge-top-mid, rgba(0, 240, 255, 0.4)) 35%,
-        var(--edge-top-faint, rgba(0, 240, 255, 0.08)) 70%,
-        transparent 100%
-      );
+          var(--edge-top-color) 0%,
+          var(--edge-top-mid) 30%,
+          var(--edge-top-faint) 65%,
+          transparent 100%);
     }
 
-    /* Bottom Edge */
     .edge-bottom {
       bottom: 0;
       left: 0;
       right: 0;
-      height: var(--glow-depth, 55px);
+      height: var(--glow-depth);
       background: linear-gradient(to top,
-        var(--edge-bottom-color, rgba(255, 140, 0, 0.95)) 0%,
-        var(--edge-bottom-mid, rgba(255, 140, 0, 0.4)) 35%,
-        var(--edge-bottom-faint, rgba(255, 140, 0, 0.08)) 70%,
-        transparent 100%
-      );
+          var(--edge-bottom-color) 0%,
+          var(--edge-bottom-mid) 30%,
+          var(--edge-bottom-faint) 65%,
+          transparent 100%);
     }
 
-    /* Left Edge */
     .edge-left {
       top: 0;
       bottom: 0;
       left: 0;
-      width: var(--glow-depth, 55px);
+      width: var(--glow-depth);
       background: linear-gradient(to right,
-        var(--edge-left-color, rgba(181, 55, 242, 0.95)) 0%,
-        var(--edge-left-mid, rgba(181, 55, 242, 0.4)) 35%,
-        var(--edge-left-faint, rgba(181, 55, 242, 0.08)) 70%,
-        transparent 100%
-      );
+          var(--edge-left-color) 0%,
+          var(--edge-left-mid) 30%,
+          var(--edge-left-faint) 65%,
+          transparent 100%);
     }
 
-    /* Right Edge */
     .edge-right {
       top: 0;
       bottom: 0;
       right: 0;
-      width: var(--glow-depth, 55px);
+      width: var(--glow-depth);
       background: linear-gradient(to left,
-        var(--edge-right-color, rgba(0, 210, 255, 0.95)) 0%,
-        var(--edge-right-mid, rgba(0, 210, 255, 0.4)) 35%,
-        var(--edge-right-faint, rgba(0, 210, 255, 0.08)) 70%,
-        transparent 100%
-      );
+          var(--edge-right-color) 0%,
+          var(--edge-right-mid) 30%,
+          var(--edge-right-faint) 65%,
+          transparent 100%);
     }
 
-    /* Perimeter razor line with soft inset glow */
-    .edge-border-line {
+    /* Layer 2 + 3: slowly travelling aurora, shown only as a ring.
+       The ring is a masked box; a big conic gradient rotates inside it
+       using transform only, so it stays on the GPU. */
+    .halo {
       position: absolute;
       inset: 0;
-      border: 2px solid transparent;
-      border-image-slice: 1;
-      border-image-source: var(--border-gradient, linear-gradient(135deg, #9b51e0 0%, #00f0ff 30%, #0070f3 55%, #ff8a3d 80%, #ff2a6d 100%));
-      box-shadow: var(--edge-box-shadow, inset 0 0 16px rgba(0, 240, 255, 0.4));
-      will-change: opacity;
+      filter: blur(14px) saturate(1.25);
+      opacity: 0.9;
       transform: translateZ(0);
+    }
+
+    .ring {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      border-radius: var(--corner);
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+    }
+
+    .halo .ring {
+      padding: var(--halo);
+    }
+
+    .rim .ring {
+      padding: var(--rim);
+    }
+
+    .rim {
+      position: absolute;
+      inset: 0;
+      transform: translateZ(0);
+    }
+
+    .spin {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 160vmax;
+      height: 160vmax;
+      margin: -80vmax 0 0 -80vmax;
+      background: var(--ring-gradient);
+      animation: aurora 36s linear infinite;
+      will-change: transform;
+    }
+
+    .rim .spin {
+      animation-duration: 28s;
+      animation-direction: reverse;
+    }
+
+    @keyframes aurora {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* Beat pulse: opacity only */
+    .pulse-beat {
+      animation: beatPulse 1.6s infinite ease-in-out;
+    }
+
+    @keyframes beatPulse {
+
+      0%,
+      100% {
+        opacity: calc(var(--base-opacity, 0.85) * 0.6);
+      }
+
+      35% {
+        opacity: var(--base-opacity, 0.85);
+      }
+
+      65% {
+        opacity: calc(var(--base-opacity, 0.85) * 0.75);
+      }
+
+      85% {
+        opacity: calc(var(--base-opacity, 0.85) * 0.92);
+      }
+    }
+
+    /* Slow breathing while paused */
+    .pulse-idle {
+      animation: breatheSmooth 5s infinite ease-in-out;
+    }
+
+    @keyframes breatheSmooth {
+
+      0%,
+      100% {
+        opacity: calc(var(--base-opacity, 0.85) * 0.35);
+      }
+
+      50% {
+        opacity: calc(var(--base-opacity, 0.85) * 0.7);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+
+      .spin,
+      .pulse-beat,
+      .pulse-idle,
+      .sleep-dot {
+        animation: none;
+      }
     }
   </style>
 </head>
+
 <body>
-  <!-- Ambient Screen Sleep / Blackout Backdrop -->
+  <!-- Ambient screen sleep / blackout backdrop -->
   <div id="blackoutLayer">
     <div class="sleep-hud">
       <span class="sleep-dot"></span>
@@ -171,13 +291,23 @@
     </div>
   </div>
 
-  <!-- Fullscreen Neon Perimeter Glow -->
+  <!-- Fullscreen neon perimeter glow -->
   <div id="glowContainer">
     <div class="edge edge-top"></div>
     <div class="edge edge-bottom"></div>
     <div class="edge edge-left"></div>
     <div class="edge edge-right"></div>
-    <div class="edge-border-line"></div>
+
+    <div class="halo">
+      <div class="ring">
+        <div class="spin"></div>
+      </div>
+    </div>
+    <div class="rim">
+      <div class="ring">
+        <div class="spin"></div>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -196,101 +326,100 @@
     let currentAccent = "#00f0ff";
     let isPlaying = false;
 
-    function hexToRgba(hex, alpha) {
-      hex = hex.replace("#", "");
+    function parseHex(hex) {
+      hex = String(hex || "#00f0ff").replace("#", "");
       if (hex.length === 3) hex = hex.split("").map(c => c + c).join("");
-      const num = parseInt(hex, 16);
-      const r = (num >> 16) & 255;
-      const g = (num >> 8) & 255;
-      const b = num & 255;
+      const num = parseInt(hex, 16) || 0;
+      return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
+    }
+
+    function hexToRgba(hex, alpha) {
+      const [r, g, b] = parseHex(hex);
       return `rgba(${r}, ${g}, ${b}, ${alpha})`;
     }
 
-    // Apply color schemes using multi-stop linear gradients
+    // Blend a colour toward white (amount > 0) or black (amount < 0)
+    function shade(hex, amount) {
+      const target = amount >= 0 ? 255 : 0;
+      const t = Math.abs(amount);
+      const [r, g, b] = parseHex(hex).map(v => Math.round(v + (target - v) * t));
+      return `rgb(${r}, ${g}, ${b})`;
+    }
+
+    function getBrightness() {
+      return Math.max(0.3, Math.min(1.5, (glowConfig.brightness || 100) / 100));
+    }
+
+    function setEdge(side, color, b) {
+      glowContainer.style.setProperty(`--edge-${side}-color`, hexToRgba(color, 0.9 * b));
+      glowContainer.style.setProperty(`--edge-${side}-mid`, hexToRgba(color, 0.38 * b));
+      glowContainer.style.setProperty(`--edge-${side}-faint`, hexToRgba(color, 0.08 * b));
+    }
+
     function applyGlowTheme() {
       const mode = glowConfig.mode || "aurora";
-      const brightness = Math.max(0.3, Math.min(1.5, (glowConfig.brightness || 100) / 100));
+      const b = getBrightness();
+      const root = document.documentElement;
+
+      glowContainer.style.setProperty("--base-opacity", String(0.9 * b));
 
       if (mode === "aurora") {
-        // Matches the photo: Cyan/Blue top-right, Purple/Magenta top-left, Orange/Gold bottom
-        glowContainer.style.setProperty("--edge-top-color", `rgba(0, 240, 255, ${0.95 * brightness})`);
-        glowContainer.style.setProperty("--edge-top-mid", `rgba(0, 240, 255, ${0.4 * brightness})`);
-        glowContainer.style.setProperty("--edge-top-faint", `rgba(0, 240, 255, ${0.08 * brightness})`);
+        // Purple top-left, cyan/blue top-right, orange/pink at the bottom
+        setEdge("top", "#00f0ff", b);
+        setEdge("right", "#00d2ff", b);
+        setEdge("left", "#b537f2", b);
+        setEdge("bottom", "#ff8c00", b);
 
-        glowContainer.style.setProperty("--edge-right-color", `rgba(0, 210, 255, ${0.95 * brightness})`);
-        glowContainer.style.setProperty("--edge-right-mid", `rgba(0, 210, 255, ${0.4 * brightness})`);
-        glowContainer.style.setProperty("--edge-right-faint", `rgba(0, 210, 255, ${0.08 * brightness})`);
-
-        glowContainer.style.setProperty("--edge-left-color", `rgba(181, 55, 242, ${0.95 * brightness})`);
-        glowContainer.style.setProperty("--edge-left-mid", `rgba(181, 55, 242, ${0.4 * brightness})`);
-        glowContainer.style.setProperty("--edge-left-faint", `rgba(181, 55, 242, ${0.08 * brightness})`);
-
-        glowContainer.style.setProperty("--edge-bottom-color", `rgba(255, 140, 0, ${0.95 * brightness})`);
-        glowContainer.style.setProperty("--edge-bottom-mid", `rgba(255, 140, 0, ${0.4 * brightness})`);
-        glowContainer.style.setProperty("--edge-bottom-faint", `rgba(255, 140, 0, ${0.08 * brightness})`);
-
-        glowContainer.style.setProperty("--border-gradient", "linear-gradient(135deg, #9b51e0 0%, #00f0ff 30%, #0070f3 55%, #ff8a3d 80%, #ff2a6d 100%)");
-        glowContainer.style.setProperty("--edge-box-shadow", `inset 0 0 20px rgba(0, 240, 255, ${0.45 * brightness})`);
-        document.documentElement.style.setProperty("--glow-accent", "#00f0ff");
-      } else {
-        let baseColor = currentAccent;
-        if (mode === "cyan") baseColor = "#00f0ff";
-        else if (mode === "pink") baseColor = "#ff2a6d";
-        else if (mode === "sunset") baseColor = "#ff8a3d";
-        else if (mode === "emerald") baseColor = "#05ffa1";
-        else if (mode === "purple") baseColor = "#b537f2";
-        else if (mode === "custom" && glowConfig.customColor) baseColor = glowConfig.customColor;
-
-        const solid = hexToRgba(baseColor, 0.95 * brightness);
-        const mid = hexToRgba(baseColor, 0.4 * brightness);
-        const faint = hexToRgba(baseColor, 0.08 * brightness);
-
-        glowContainer.style.setProperty("--edge-top-color", solid);
-        glowContainer.style.setProperty("--edge-top-mid", mid);
-        glowContainer.style.setProperty("--edge-top-faint", faint);
-
-        glowContainer.style.setProperty("--edge-right-color", solid);
-        glowContainer.style.setProperty("--edge-right-mid", mid);
-        glowContainer.style.setProperty("--edge-right-faint", faint);
-
-        glowContainer.style.setProperty("--edge-left-color", solid);
-        glowContainer.style.setProperty("--edge-left-mid", mid);
-        glowContainer.style.setProperty("--edge-left-faint", faint);
-
-        glowContainer.style.setProperty("--edge-bottom-color", solid);
-        glowContainer.style.setProperty("--edge-bottom-mid", mid);
-        glowContainer.style.setProperty("--edge-bottom-faint", faint);
-
-        glowContainer.style.setProperty("--border-gradient", `linear-gradient(135deg, ${baseColor} 0%, #ffffff 50%, ${baseColor} 100%)`);
-        glowContainer.style.setProperty("--edge-box-shadow", `inset 0 0 20px ${hexToRgba(baseColor, 0.45 * brightness)}`);
-        document.documentElement.style.setProperty("--glow-accent", baseColor);
+        root.style.setProperty(
+          "--ring-gradient",
+          "conic-gradient(from 0deg, #b537f2, #00f0ff, #0070f3, #ff8a3d, #ff2a6d, #b537f2)"
+        );
+        root.style.setProperty("--glow-accent", "#00f0ff");
+        return;
       }
+
+      let base = currentAccent;
+      if (mode === "cyan") base = "#00f0ff";
+      else if (mode === "pink") base = "#ff2a6d";
+      else if (mode === "sunset") base = "#ff8a3d";
+      else if (mode === "emerald") base = "#05ffa1";
+      else if (mode === "purple") base = "#b537f2";
+      else if (mode === "custom" && glowConfig.customColor) base = glowConfig.customColor;
+
+      ["top", "right", "bottom", "left"].forEach(side => setEdge(side, base, b));
+
+      // Single-colour themes still shimmer: base -> bright tint -> base -> deep shade
+      root.style.setProperty(
+        "--ring-gradient",
+        `conic-gradient(from 0deg, ${base}, ${shade(base, 0.6)}, ${base}, ${shade(base, -0.35)}, ${base})`
+      );
+      root.style.setProperty("--glow-accent", base);
     }
 
     function updateOpacity() {
-      const brightness = Math.max(0.3, Math.min(1.5, (glowConfig.brightness || 100) / 100));
-      // Full brightness when playing, gently dimmed when paused (0 FPS steady state!)
-      const targetOpacity = isPlaying ? (0.9 * brightness) : (0.4 * brightness);
-      glowContainer.style.setProperty("--current-opacity", String(targetOpacity));
+      const b = getBrightness();
+      // Full brightness when playing, dimmed when paused
+      glowContainer.style.setProperty("--current-opacity", String(isPlaying ? 0.9 * b : 0.4 * b));
+    }
+
+    function updateAnimationState() {
+      if (!glowConfig.enabled) {
+        glowContainer.classList.remove("pulse-beat", "pulse-idle");
+        return;
+      }
+      glowContainer.classList.toggle("pulse-beat", isPlaying);
+      glowContainer.classList.toggle("pulse-idle", !isPlaying);
     }
 
     function updateState(config) {
       if (!config) return;
       glowConfig = Object.assign(glowConfig, config);
 
-      if (glowConfig.enabled) {
-        glowContainer.classList.add("enabled");
-      } else {
-        glowContainer.classList.remove("enabled");
-      }
-
-      if (glowConfig.sleepBlackout) {
-        blackoutLayer.classList.add("active");
-      } else {
-        blackoutLayer.classList.remove("active");
-      }
+      glowContainer.classList.toggle("enabled", !!glowConfig.enabled);
+      blackoutLayer.classList.toggle("active", !!glowConfig.sleepBlackout);
 
       applyGlowTheme();
+      updateAnimationState();
       updateOpacity();
     }
 
@@ -317,24 +446,26 @@
             sleepHudText.textContent = `${state.title}${state.artist ? ` • ${state.artist}` : ""} (Playing)`;
           }
           if (wasPlaying !== isPlaying) {
+            updateAnimationState();
             updateOpacity();
           }
         });
       }
     }
 
-    // Wake from sleep blackout if user clicks anywhere or presses any key
-    window.addEventListener("pointerdown", () => {
+    // Wake from sleep blackout on click or key press
+    function wake() {
       if (glowConfig.sleepBlackout && window.island && window.island.cmd) {
         window.island.cmd("setGlowSleepBlackout", false);
       }
-    });
+    }
+    window.addEventListener("pointerdown", wake);
+    window.addEventListener("keydown", wake);
 
-    window.addEventListener("keydown", () => {
-      if (glowConfig.sleepBlackout && window.island && window.island.cmd) {
-        window.island.cmd("setGlowSleepBlackout", false);
-      }
-    });
+    // Apply defaults immediately so the theme is ready before IPC replies
+    applyGlowTheme();
+    updateOpacity();
   </script>
 </body>
+
 </html>
