@@ -281,7 +281,12 @@ function updatePowerSave() {
 
   function applyGlowConfig(configUpdate, broadcast = true) {
     if (!configUpdate || typeof configUpdate !== "object") return;
+    const prevGlowJson = JSON.stringify(settings.glow || {});
     settings.glow = Object.assign(settings.glow || {}, configUpdate);
+    const newGlowJson = JSON.stringify(settings.glow);
+    if (prevGlowJson === newGlowJson) {
+      return;
+    }
     saveSettings();
     updatePowerSave();
     syncGlowVisibility();
@@ -618,7 +623,7 @@ function updatePowerSave() {
         onCommand: (cmd, value) => broadcastCommand(cmd, value),
         onSetAccentColor: color => applyAccentColor(color),
         onSetSticker: stickerId => applySticker(stickerId),
-        onSetGlow: cfg => applyGlowConfig(cfg),
+        onSetGlow: cfg => applyGlowConfig(cfg, false),
         onToggleGlow: () => applyGlowConfig({ enabled: !settings.glow.enabled }),
         onStatusChange: (status, message) => {
           currentRemoteStatus = { status, message };

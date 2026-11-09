@@ -9,6 +9,7 @@ let settingsListener = null;
 let lastProcessedCmdId = null;
 let isInitialCommandSnapshot = true;
 let lastSyncedSticker = null;
+let lastSyncedGlowJson = "";
 let lastPushedStateJson = "";
 let heartbeatInterval = null;
 
@@ -98,7 +99,10 @@ function setup(firebaseConfig, roomCode) {
       if (isInitialSettingsSnapshot) {
         isInitialSettingsSnapshot = false;
         if (data.currentSticker) lastSyncedSticker = data.currentSticker;
-        if (data.glow && callbacks.onSetGlow) callbacks.onSetGlow(data.glow);
+        if (data.glow) {
+          lastSyncedGlowJson = JSON.stringify(data.glow);
+          if (callbacks.onSetGlow) callbacks.onSetGlow(data.glow);
+        }
         return;
       }
 
@@ -106,8 +110,12 @@ function setup(firebaseConfig, roomCode) {
         lastSyncedSticker = data.currentSticker;
         callbacks.onSetSticker(data.currentSticker);
       }
-      if (data.glow && callbacks.onSetGlow) {
-        callbacks.onSetGlow(data.glow);
+      if (data.glow) {
+        const glowJson = JSON.stringify(data.glow);
+        if (glowJson !== lastSyncedGlowJson) {
+          lastSyncedGlowJson = glowJson;
+          if (callbacks.onSetGlow) callbacks.onSetGlow(data.glow);
+        }
       }
     });
 
@@ -170,18 +178,25 @@ function pushState(state) {
 }
 
 function pushSettings(settings) {
-  if (!db || !currentRoom) return;
+  if (!db || !currentRoom || !settings) return;
   const settingsRef = ref(db, `rooms/${currentRoom}/settings`);
-  const payload = {
-    accentColor: settings.accentColor || "#ff8a3d",
-    updatedAt: Date.now()
-  };
+  const payload = {};
+  if (settings.accentColor) {
+    payload.accentColor = settings.accentColor;
+  }
   if (settings.currentSticker) {
     payload.currentSticker = settings.currentSticker;
+    lastSyncedSticker = settings.currentSticker;
   }
   if (settings.glow) {
-    payload.glow = settings.glow;
+    const glowJson = JSON.stringify(settings.glow);
+    if (glowJson !== lastSyncedGlowJson) {
+      lastSyncedGlowJson = glowJson;
+      payload.glow = settings.glow;
+    }
   }
+  if (Object.keys(payload).length === 0) return;
+  payload.updatedAt = Date.now();
   update(settingsRef, payload).catch(err => {
     console.error("[FirebaseSync] pushSettings error:", err.message);
   });
