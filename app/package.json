@@ -1,6 +1,6 @@
 {
   "name": "media-island",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Dynamic media controller and visualizer for Windows and Mobile, by sayandeep0212",
   "main": "main.js",
   "author": "sayandeep0212 <https://github.com/sayandeep0212>",
@@ -45,6 +45,9 @@
       "!dist/**",
       "!builder-debug.yml",
       "!.env*"
+    ],
+    "asarUnpack": [
+      "bin/**/*"
     ],
     "win": {
       "target": [

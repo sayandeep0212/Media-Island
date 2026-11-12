@@ -318,6 +318,105 @@
       text-decoration: underline;
     }
 
+    .system-slider-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .system-slider-row label {
+      width: 130px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+    }
+    .system-slider-row input[type="range"] {
+      flex: 1;
+      height: 6px;
+      border-radius: 99px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+    .slider-val-tag {
+      width: 45px;
+      font-size: 13px;
+      font-weight: 600;
+      text-align: right;
+      color: var(--text-muted);
+    }
+    .time-fmt-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 8px;
+    }
+    .time-fmt-btn {
+      flex: 1;
+      padding: 8px 12px;
+      background: var(--surface-hover);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+    .time-fmt-btn.active {
+      background: var(--accent);
+      color: #000;
+      border-color: var(--accent);
+    }
+    .apps-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .app-item-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      border-radius: 8px;
+    }
+    .app-item-name {
+      width: 100px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .app-item-target {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--border);
+      padding: 5px 8px;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 12px;
+      font-family: monospace;
+    }
+    .app-test-btn {
+      padding: 4px 10px;
+      background: var(--surface-hover);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .app-test-btn:hover { background: rgba(255, 255, 255, 0.15); }
+    .app-del-btn {
+      padding: 4px 8px;
+      background: rgba(255, 59, 48, 0.15);
+      border: 1px solid rgba(255, 59, 48, 0.3);
+      color: #ff3b30;
+      border-radius: 6px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+
     .footer-copyright {
       font-size: 10px;
       opacity: 0.7;
@@ -342,6 +441,7 @@
     <button class="tab-btn active" data-tab="tab-color">Appearance</button>
     <button class="tab-btn" data-tab="tab-glow">Neon Edge Glow & Sleep</button>
     <button class="tab-btn" data-tab="tab-remote">Phone Remote & Pairing</button>
+    <button class="tab-btn" data-tab="tab-mac">Mac Setup & Pinned Apps</button>
   </div>
 
   <!-- Tab 1: Appearance -->
@@ -468,6 +568,50 @@
 
       <button id="saveConfigBtn" class="btn">Apply Room Code</button>
       <div id="saveStatus"></div>
+    </div>
+  </div>
+
+  <!-- Tab 4: Mac Setup & Pinned Apps -->
+  <div id="tab-mac" class="tab-content">
+    <div class="card">
+      <div class="card-title">System Volume & Display Brightness</div>
+      <div class="card-desc">Control Windows master audio and monitor brightness directly from Media Island & Mobile Remote.</div>
+      
+      <div class="system-slider-row">
+        <label>Display Brightness</label>
+        <input id="setBrightSlider" type="range" min="0" max="100" value="70">
+        <span id="setBrightVal" class="slider-val-tag">70%</span>
+      </div>
+
+      <div class="system-slider-row">
+        <label>Master Volume</label>
+        <input id="setVolSlider" type="range" min="0" max="100" value="50">
+        <span id="setVolVal" class="slider-val-tag">50%</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Live Clock & Date Format</div>
+      <div class="card-desc">Choose between 12-hour AM/PM or 24-hour military digital clock format.</div>
+      <div class="time-fmt-row">
+        <button id="fmt12Btn" class="time-fmt-btn active">12-Hour (e.g. 10:45 PM)</button>
+        <button id="fmt24Btn" class="time-fmt-btn">24-Hour (e.g. 22:45)</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Pinned Apps Dock (macOS Style)</div>
+      <div class="card-desc">Customize apps pinned to the Media Island dock. Click "Test" to verify launch or change targets.</div>
+
+      <div id="pinnedAppsList" class="apps-list">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <div style="display: flex; gap: 10px; margin-top: 14px;">
+        <button id="saveAppsBtn" class="btn" style="flex: 1;">Save Pinned Apps</button>
+        <button id="resetAppsBtn" class="btn" style="background: var(--surface-hover); color: var(--text);">Reset Defaults</button>
+      </div>
+      <div id="appsSaveStatus" style="font-size: 12px; margin-top: 8px;"></div>
     </div>
   </div>
 
@@ -701,6 +845,151 @@
     if (desktopToggleBlackoutBtn) {
       desktopToggleBlackoutBtn.addEventListener("click", () => {
         window.island.toggleSleepBlackout();
+      });
+    }
+
+    // --- Mac Setup & Pinned Apps Tab ---
+    const setBrightSlider = $("setBrightSlider");
+    const setBrightVal = $("setBrightVal");
+    const setVolSlider = $("setVolSlider");
+    const setVolVal = $("setVolVal");
+    const fmt12Btn = $("fmt12Btn");
+    const fmt24Btn = $("fmt24Btn");
+    const pinnedAppsList = $("pinnedAppsList");
+    const saveAppsBtn = $("saveAppsBtn");
+    const resetAppsBtn = $("resetAppsBtn");
+    const appsSaveStatus = $("appsSaveStatus");
+
+    let currentPinnedApps = [];
+
+    const DEFAULT_APPS = [
+      { id: "spotify", name: "Spotify", icon: "spotify", target: "spotify:", bg: "#1db954" },
+      { id: "chrome", name: "Chrome", icon: "chrome", target: "chrome", bg: "#4285f4" },
+      { id: "vscode", name: "VS Code", icon: "code", target: "code", bg: "#007acc" },
+      { id: "whatsapp", name: "WhatsApp", icon: "whatsapp", target: "whatsapp:", bg: "#25d366" },
+      { id: "explorer", name: "Files", icon: "folder", target: "explorer.exe", bg: "#fbc02d" },
+      { id: "terminal", name: "Terminal", icon: "terminal", target: "powershell.exe", bg: "#24292e" },
+      { id: "calc", name: "Calculator", icon: "calculator", target: "calc.exe", bg: "#ff9500" },
+      { id: "settings", name: "Settings", icon: "settings", target: "ms-settings:", bg: "#5856d6" }
+    ];
+
+    function renderAppsManager(apps) {
+      currentPinnedApps = Array.isArray(apps) && apps.length > 0 ? JSON.parse(JSON.stringify(apps)) : DEFAULT_APPS;
+      pinnedAppsList.innerHTML = "";
+      currentPinnedApps.forEach((app) => {
+        const row = document.createElement("div");
+        row.className = "app-item-card";
+
+        const nameLabel = document.createElement("div");
+        nameLabel.className = "app-item-name";
+        nameLabel.textContent = app.name;
+
+        const targetInput = document.createElement("input");
+        targetInput.type = "text";
+        targetInput.className = "app-item-target";
+        targetInput.value = app.target || "";
+        targetInput.title = "Executable command or protocol link";
+        targetInput.addEventListener("input", e => {
+          app.target = e.target.value.trim();
+        });
+
+        const testBtn = document.createElement("button");
+        testBtn.className = "app-test-btn";
+        testBtn.textContent = "Launch";
+        testBtn.addEventListener("click", () => {
+          if (window.island.launchApp) window.island.launchApp(targetInput.value.trim());
+        });
+
+        row.appendChild(nameLabel);
+        row.appendChild(targetInput);
+        row.appendChild(testBtn);
+        pinnedAppsList.appendChild(row);
+      });
+    }
+
+    if (window.island.getPinnedApps) {
+      window.island.getPinnedApps().then(renderAppsManager);
+    }
+
+    if (saveAppsBtn) {
+      saveAppsBtn.addEventListener("click", () => {
+        if (window.island.savePinnedApps) {
+          window.island.savePinnedApps(currentPinnedApps).then(() => {
+            appsSaveStatus.style.color = "#34c759";
+            appsSaveStatus.textContent = "✓ Pinned Apps saved to Media Island!";
+            setTimeout(() => { appsSaveStatus.textContent = ""; }, 3000);
+          });
+        }
+      });
+    }
+
+    if (resetAppsBtn) {
+      resetAppsBtn.addEventListener("click", () => {
+        renderAppsManager(DEFAULT_APPS);
+        if (window.island.savePinnedApps) window.island.savePinnedApps(DEFAULT_APPS);
+      });
+    }
+
+    // Sliders
+    if (setBrightSlider) {
+      setBrightSlider.addEventListener("input", e => {
+        const val = Number(e.target.value);
+        setBrightVal.textContent = `${val}%`;
+      });
+      setBrightSlider.addEventListener("change", e => {
+        const val = Number(e.target.value);
+        if (window.island.setBrightness) window.island.setBrightness(val);
+      });
+    }
+
+    if (setVolSlider) {
+      setVolSlider.addEventListener("input", e => {
+        const val = Number(e.target.value);
+        setVolVal.textContent = `${val}%`;
+      });
+      setVolSlider.addEventListener("change", e => {
+        const val = Number(e.target.value);
+        if (window.island.setVolume) window.island.setVolume(val);
+      });
+    }
+
+    if (window.island.getSystemControls) {
+      window.island.getSystemControls().then(ctrls => {
+        if (!ctrls) return;
+        if (ctrls.volume != null && setVolSlider) {
+          setVolSlider.value = ctrls.volume;
+          setVolVal.textContent = `${ctrls.volume}%`;
+        }
+        if (ctrls.brightness != null && setBrightSlider) {
+          setBrightSlider.value = ctrls.brightness;
+          setBrightVal.textContent = `${ctrls.brightness}%`;
+        }
+      });
+    }
+
+    // Time Format Toggle
+    function updateTimeFormatUI(fmt) {
+      if (fmt === "24h") {
+        fmt24Btn.classList.add("active");
+        fmt12Btn.classList.remove("active");
+      } else {
+        fmt12Btn.classList.add("active");
+        fmt24Btn.classList.remove("active");
+      }
+    }
+
+    if (window.island.getTimeFormat) {
+      window.island.getTimeFormat().then(updateTimeFormatUI);
+    }
+
+    if (fmt12Btn && fmt24Btn) {
+      fmt12Btn.addEventListener("click", () => {
+        updateTimeFormatUI("12h");
+        if (window.island.setTimeFormat) window.island.setTimeFormat("12h");
+      });
+      fmt24Btn.addEventListener("click", () => {
+        updateTimeFormatUI("24h");
+        if (window.island.setTimeFormat) window.island.setTimeFormat("24h");
       });
     }
   </script>

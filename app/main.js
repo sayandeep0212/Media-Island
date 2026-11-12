@@ -6,6 +6,7 @@ const os = require("os");
 const { WebSocketServer } = require("ws");
 const QRCode = require("qrcode");
 const firebaseSync = require("./firebase-sync");
+const systemControls = require("./system-controls");
 
 let win;
 let glowWin;
@@ -79,6 +80,7 @@ let settings = {
   roomCode: null,
   firebaseConfig: null,
   currentSticker: "auto",
+  timeFormat: "12h",
   glow: {
     enabled: false,
     mode: "aurora",
@@ -86,7 +88,17 @@ let settings = {
     brightness: 100,
     sleepBlackout: false,
     autoSleepIdleMinutes: 0
-  }
+  },
+  pinnedApps: [
+    { id: "spotify", name: "Spotify", icon: "spotify", target: "spotify:" },
+    { id: "chrome", name: "Chrome", icon: "chrome", target: "chrome" },
+    { id: "vscode", name: "VS Code", icon: "code", target: "code" },
+    { id: "whatsapp", name: "WhatsApp", icon: "whatsapp", target: "whatsapp:" },
+    { id: "explorer", name: "Files", icon: "folder", target: "explorer.exe" },
+    { id: "terminal", name: "Terminal", icon: "terminal", target: "powershell.exe" },
+    { id: "calc", name: "Calculator", icon: "calculator", target: "calc.exe" },
+    { id: "settings", name: "Settings", icon: "settings", target: "ms-settings:" }
+  ]
 };
 let dragOffset;
 let currentRemoteStatus = { status: "not_configured", message: "Connecting to Firebase..." };
@@ -120,8 +132,8 @@ function getLocalIp() {
 
 function place() {
   const { bounds } = screen.getPrimaryDisplay();
-  const w = 560, h = 190;
-  win.setBounds({ x: Math.round(bounds.x + (bounds.width - w) / 2), y: bounds.y + 6, width: w, height: h });
+  const w = 660, h = 260;
+  win.setBounds({ x: Math.round(bounds.x + (bounds.width - w) / 2), y: bounds.y + 4, width: w, height: h });
 }
 
 function loadSettings() {
@@ -136,6 +148,12 @@ function loadSettings() {
     }
     if (saved.currentSticker && typeof saved.currentSticker === "string") {
       settings.currentSticker = saved.currentSticker;
+    }
+    if (saved.timeFormat === "12h" || saved.timeFormat === "24h") {
+      settings.timeFormat = saved.timeFormat;
+    }
+    if (Array.isArray(saved.pinnedApps)) {
+      settings.pinnedApps = saved.pinnedApps;
     }
     if (saved.glow && typeof saved.glow === "object") {
       settings.glow = Object.assign({
@@ -318,7 +336,7 @@ function updatePowerSave() {
 
     function createWindow() {
       win = new BrowserWindow({
-        width: 560, height: 190,
+        width: 660, height: 260,
         frame: false, transparent: true, resizable: false, hasShadow: false,
         alwaysOnTop: true, skipTaskbar: true, focusable: false,
         webPreferences: { preload: path.join(__dirname, "preload.js") }
@@ -327,7 +345,13 @@ function updatePowerSave() {
       win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
       win.setIgnoreMouseEvents(true, { forward: true });
       win.loadFile("index.html");
-      win.webContents.on("did-finish-load", () => win.webContents.send("accent-color", settings.accentColor));
+      win.webContents.on("did-finish-load", () => {
+        win.webContents.send("accent-color", settings.accentColor);
+        win.webContents.send("pinned-apps", settings.pinnedApps);
+        systemControls.getStatus().then(status => {
+          if (win && !win.isDestroyed()) win.webContents.send("system-controls", status);
+        });
+      });
       place();
       screen.on("display-metrics-changed", place);
     }
@@ -354,6 +378,33 @@ function updatePowerSave() {
     }
 
     function broadcastCommand(cmd, value = null) {
+      if (cmd === "playpause" || cmd === "toggle") {
+        systemControls.sendMediaKey("playpause");
+      } else if (cmd === "next") {
+        systemControls.sendMediaKey("next");
+      } else if (cmd === "prev" || cmd === "previous") {
+        systemControls.sendMediaKey("prev");
+      } else if (cmd === "stop") {
+        systemControls.sendMediaKey("stop");
+      } else if (cmd === "setVolume") {
+        systemControls.setVolume(value).then(vol => {
+          if (win && !win.isDestroyed()) win.webContents.send("system-controls", { volume: vol });
+          if (settingsWin && !settingsWin.isDestroyed()) settingsWin.webContents.send("system-controls", { volume: vol });
+          firebaseSync.pushControls({ volume: vol });
+        });
+        return;
+      } else if (cmd === "setBrightness") {
+        systemControls.setBrightness(value).then(bright => {
+          if (win && !win.isDestroyed()) win.webContents.send("system-controls", { brightness: bright });
+          if (settingsWin && !settingsWin.isDestroyed()) settingsWin.webContents.send("system-controls", { brightness: bright });
+          firebaseSync.pushControls({ brightness: bright });
+        });
+        return;
+      } else if (cmd === "launchApp") {
+        systemControls.launchApp(value);
+        return;
+      }
+
       const payload = JSON.stringify({ type: "cmd", cmd, value });
       for (const c of clients) {
         if (c.readyState === 1) c.send(payload);
@@ -529,6 +580,42 @@ function updatePowerSave() {
       return settings.glow.sleepBlackout;
     });
 
+    // System Controls & Pinned Apps Handlers
+    ipcMain.handle("system:getControls", async () => {
+      return await systemControls.getStatus();
+    });
+    ipcMain.handle("system:setVolume", async (_e, val) => {
+      broadcastCommand("setVolume", val);
+      return val;
+    });
+    ipcMain.handle("system:setBrightness", async (_e, val) => {
+      broadcastCommand("setBrightness", val);
+      return val;
+    });
+    ipcMain.handle("system:launchApp", (_e, target) => {
+      systemControls.launchApp(target);
+    });
+    ipcMain.handle("settings:getPinnedApps", () => settings.pinnedApps);
+    ipcMain.handle("settings:savePinnedApps", (_e, apps) => {
+      if (Array.isArray(apps)) {
+        settings.pinnedApps = apps;
+        saveSettings();
+        if (win && !win.isDestroyed()) win.webContents.send("pinned-apps", apps);
+        firebaseSync.pushSettings(settings);
+      }
+      return settings.pinnedApps;
+    });
+    ipcMain.handle("settings:getTimeFormat", () => settings.timeFormat);
+    ipcMain.handle("settings:setTimeFormat", (_e, fmt) => {
+      if (fmt === "12h" || fmt === "24h") {
+        settings.timeFormat = fmt;
+        saveSettings();
+        if (win && !win.isDestroyed()) win.webContents.send("time-format", fmt);
+        firebaseSync.pushSettings(settings);
+      }
+      return settings.timeFormat;
+    });
+
     ipcMain.on("interactive", (_e, on) => {
       if (!win) return;
       win.setIgnoreMouseEvents(!on, { forward: true });
@@ -637,6 +724,48 @@ function updatePowerSave() {
       createGlowWindow();
       createWindow();
 
+      // Start native Windows system controls watcher (volume, brightness, Spotify)
+      let lastSpotifyTrackKey = "";
+      systemControls.startWatcher({
+        onControls: (ctrls) => {
+          if (win && !win.isDestroyed()) win.webContents.send("system-controls", ctrls);
+          if (settingsWin && !settingsWin.isDestroyed()) settingsWin.webContents.send("system-controls", ctrls);
+          firebaseSync.pushControls(ctrls);
+        },
+        onSpotifyState: (spot) => {
+          if (!spot) return;
+          const trackKey = `${spot.running}_${spot.playing}_${spot.title}_${spot.artist}`;
+          if (trackKey === lastSpotifyTrackKey) return;
+          lastSpotifyTrackKey = trackKey;
+
+          if (spot.playing && spot.title) {
+            const spotState = {
+              type: "music",
+              title: spot.title,
+              artist: spot.artist || "Spotify",
+              playing: true,
+              source: "spotify",
+              sourceName: spot.sourceName || "Spotify Desktop",
+              sourceIcon: spot.sourceIcon || "",
+              currentTime: spot.currentTime || 0,
+              duration: spot.duration || 0,
+              art: spot.art || ""
+            };
+            lastMediaState = spotState;
+            if (win && !win.isDestroyed()) win.webContents.send("state", spotState);
+            if (glowWin && !glowWin.isDestroyed() && glowWin.isVisible()) glowWin.webContents.send("state", spotState);
+            updatePowerSave();
+            firebaseSync.pushState(spotState);
+          } else if (!spot.playing && lastMediaState && lastMediaState.source === "spotify") {
+            lastMediaState.playing = false;
+            if (win && !win.isDestroyed()) win.webContents.send("state", lastMediaState);
+            if (glowWin && !glowWin.isDestroyed() && glowWin.isVisible()) glowWin.webContents.send("state", lastMediaState);
+            updatePowerSave();
+            firebaseSync.pushState(lastMediaState);
+          }
+        }
+      });
+
       powerMonitor.on("lock-screen", () => {
         if (glowWin && !glowWin.isDestroyed()) {
           glowWin.webContents.send("screen-locked", true);
@@ -648,6 +777,10 @@ function updatePowerSave() {
           glowWin.webContents.send("screen-locked", false);
         }
       });
+    });
+
+    app.on("before-quit", () => {
+      systemControls.stopWatcher();
     });
 
     app.on("second-instance", () => {

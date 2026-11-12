@@ -236,6 +236,76 @@
     </div>
   </main>
 
+  <!-- macOS System Controls Card (Volume & Brightness) -->
+  <section class="system-controls-card">
+    <div class="section-title">
+      <span>System Controls</span>
+      <span class="control-sync-tag">Live Sync</span>
+    </div>
+    
+    <!-- Brightness Slider -->
+    <div class="mobile-slider-box">
+      <div class="m-slider-label">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+        <span>Display Brightness</span>
+        <span id="mobileBrightVal" class="m-val-text">70%</span>
+      </div>
+      <input id="mobileBrightSlider" class="mobile-range" type="range" min="0" max="100" value="70">
+    </div>
+
+    <!-- Volume Slider -->
+    <div class="mobile-slider-box">
+      <div class="m-slider-label">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+        <span>Master Volume</span>
+        <span id="mobileVolVal" class="m-val-text">50%</span>
+      </div>
+      <input id="mobileVolSlider" class="mobile-range" type="range" min="0" max="100" value="50">
+    </div>
+  </section>
+
+  <!-- Pinned Apps Quick Launcher (Image 2 style) -->
+  <section class="pinned-launcher-card">
+    <div class="section-title">
+      <span>Pinned Apps</span>
+      <span class="control-sync-tag">1-Tap Launch</span>
+    </div>
+    <div id="mobileAppsGrid" class="mobile-apps-grid">
+      <button class="m-app-btn" data-target="spotify:" style="--app-bg: #1db954;">
+        <span class="m-app-icon">🎵</span>
+        <span class="m-app-name">Spotify</span>
+      </button>
+      <button class="m-app-btn" data-target="chrome" style="--app-bg: #4285f4;">
+        <span class="m-app-icon">🌐</span>
+        <span class="m-app-name">Chrome</span>
+      </button>
+      <button class="m-app-btn" data-target="code" style="--app-bg: #007acc;">
+        <span class="m-app-icon">💻</span>
+        <span class="m-app-name">VS Code</span>
+      </button>
+      <button class="m-app-btn" data-target="whatsapp:" style="--app-bg: #25d366;">
+        <span class="m-app-icon">💬</span>
+        <span class="m-app-name">WhatsApp</span>
+      </button>
+      <button class="m-app-btn" data-target="explorer.exe" style="--app-bg: #fbc02d;">
+        <span class="m-app-icon">📁</span>
+        <span class="m-app-name">Files</span>
+      </button>
+      <button class="m-app-btn" data-target="powershell.exe" style="--app-bg: #24292e;">
+        <span class="m-app-icon">⬛</span>
+        <span class="m-app-name">Terminal</span>
+      </button>
+      <button class="m-app-btn" data-target="calc.exe" style="--app-bg: #ff9500;">
+        <span class="m-app-icon">🧮</span>
+        <span class="m-app-name">Calc</span>
+      </button>
+      <button class="m-app-btn" data-target="ms-settings:" style="--app-bg: #5856d6;">
+        <span class="m-app-icon">⚙️</span>
+        <span class="m-app-name">Settings</span>
+      </button>
+    </div>
+  </section>
+
   <!-- Dynamic Island Stickers Studio -->
   <section class="stickers-studio">
     <div class="section-title">

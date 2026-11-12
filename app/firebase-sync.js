@@ -195,11 +195,27 @@ function pushSettings(settings) {
       payload.glow = settings.glow;
     }
   }
+  if (settings.pinnedApps) {
+    payload.pinnedApps = settings.pinnedApps;
+  }
+  if (settings.timeFormat) {
+    payload.timeFormat = settings.timeFormat;
+  }
   if (Object.keys(payload).length === 0) return;
   payload.updatedAt = Date.now();
   update(settingsRef, payload).catch(err => {
     console.error("[FirebaseSync] pushSettings error:", err.message);
   });
+}
+
+function pushControls(controls) {
+  if (!db || !currentRoom || !controls) return;
+  const controlsRef = ref(db, `rooms/${currentRoom}/controls`);
+  update(controlsRef, {
+    volume: controls.volume != null ? controls.volume : 50,
+    brightness: controls.brightness != null ? controls.brightness : 70,
+    updatedAt: Date.now()
+  }).catch(() => {});
 }
 
 function cleanup() {
@@ -238,5 +254,6 @@ module.exports = {
   setup,
   pushState,
   pushSettings,
+  pushControls,
   cleanup
 };

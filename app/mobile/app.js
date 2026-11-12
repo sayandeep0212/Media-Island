@@ -72,6 +72,13 @@
   const glowBrightnessSlider = $("glowBrightnessSlider");
   const glowBrightnessValue = $("glowBrightnessValue");
 
+  // System Controls & Pinned Apps elements
+  const mobileBrightSlider = $("mobileBrightSlider");
+  const mobileBrightVal = $("mobileBrightVal");
+  const mobileVolSlider = $("mobileVolSlider");
+  const mobileVolVal = $("mobileVolVal");
+  const mobileAppsGrid = $("mobileAppsGrid");
+
   let currentGlow = {
     enabled: false,
     mode: "aurora",
@@ -512,6 +519,41 @@
     });
   }
 
+  // System Controls & Pinned Apps Events
+  if (mobileBrightSlider) {
+    mobileBrightSlider.addEventListener("input", e => {
+      const val = Number(e.target.value);
+      if (mobileBrightVal) mobileBrightVal.textContent = `${val}%`;
+    });
+    mobileBrightSlider.addEventListener("change", e => {
+      const val = Number(e.target.value);
+      sendCommand("setBrightness", val);
+    });
+  }
+
+  if (mobileVolSlider) {
+    mobileVolSlider.addEventListener("input", e => {
+      const val = Number(e.target.value);
+      if (mobileVolVal) mobileVolVal.textContent = `${val}%`;
+    });
+    mobileVolSlider.addEventListener("change", e => {
+      const val = Number(e.target.value);
+      sendCommand("setVolume", val);
+    });
+  }
+
+  if (mobileAppsGrid) {
+    mobileAppsGrid.addEventListener("click", e => {
+      const btn = e.target.closest(".m-app-btn");
+      if (!btn) return;
+      const target = btn.dataset.target;
+      if (target) {
+        vibrate(30);
+        sendCommand("launchApp", target);
+      }
+    });
+  }
+
   // Modal Dialog Events
   settingsBtn.addEventListener("click", () => {
     roomCodeInput.value = roomCode || "";
@@ -636,6 +678,21 @@
             if (val.accentColor) setAccentColor(val.accentColor, true);
             if (val.currentSticker) chooseSticker(val.currentSticker, false);
             if (val.glow) applyGlowUI(val.glow, false);
+          }
+        });
+
+        // Listen for system controls (volume & brightness)
+        const controlsRef = db.ref(`rooms/${roomCode}/controls`);
+        controlsRef.on("value", snapshot => {
+          const ctrls = snapshot.val();
+          if (!ctrls) return;
+          if (ctrls.volume != null && mobileVolSlider && !mobileVolSlider.matches(":active")) {
+            mobileVolSlider.value = ctrls.volume;
+            if (mobileVolVal) mobileVolVal.textContent = `${ctrls.volume}%`;
+          }
+          if (ctrls.brightness != null && mobileBrightSlider && !mobileBrightSlider.matches(":active")) {
+            mobileBrightSlider.value = ctrls.brightness;
+            if (mobileBrightVal) mobileBrightVal.textContent = `${ctrls.brightness}%`;
           }
         });
 

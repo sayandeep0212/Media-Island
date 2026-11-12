@@ -1,180 +1,1068 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <style>
-  :root { --accent: #ff8a3d; }
-  html, body { margin: 0; background: transparent; overflow: hidden; font-family: -apple-system, "Segoe UI", sans-serif; user-select: none; }
-  #wrap { width: 560px; height: 190px; display: flex; justify-content: center; align-items: flex-start; }
-  #pill {
-    margin-top: 2px; width: 244px; height: 42px; box-sizing: border-box;
-    background: #000; border: 1px solid #202020; border-radius: 999px;
-    display: flex; align-items: center; padding: 5px 14px 5px 5px; color: #fff;
-    transform: scale(0); opacity: 0; transform-origin: top center;
-    transition: width .35s cubic-bezier(.3,1.3,.5,1), height .35s cubic-bezier(.3,1.3,.5,1), border-radius .35s, transform .35s, opacity .25s, padding .35s;
+  :root {
+    --accent: #ff8a3d;
+    --mac-blue: #007aff;
+    --bg-surface: rgba(16, 16, 20, 0.94);
+    --border-subtle: rgba(255, 255, 255, 0.12);
+    --border-hover: rgba(255, 255, 255, 0.22);
+    --text-main: #f5f5f7;
+    --text-muted: #8e8e93;
+    --text-dim: #636366;
+    --slider-track: rgba(255, 255, 255, 0.16);
   }
-  #pill.show { transform: scale(1); opacity: 1; }
-  #pill { cursor: grab; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  #wrap {
+    width: 660px;
+    height: 260px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+  }
+
+  /* Island Main Capsule */
+  #pill {
+    margin-top: 2px;
+    width: 254px;
+    height: 42px;
+    box-sizing: border-box;
+    background: #000000;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    padding: 5px 12px 5px 6px;
+    color: var(--text-main);
+    transform: scale(1);
+    opacity: 1;
+    transform-origin: top center;
+    cursor: grab;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.4);
+    transition: width 0.38s cubic-bezier(0.25, 1.25, 0.4, 1),
+                height 0.38s cubic-bezier(0.25, 1.25, 0.4, 1),
+                border-radius 0.38s ease,
+                padding 0.35s ease,
+                background 0.35s ease;
+  }
+
   #pill.dragging { cursor: grabbing; }
-  #pill.open { width: 520px; height: 154px; border-radius: 48px; padding: 14px 22px; flex-direction: column; align-items: stretch; }
-  #topline { display: flex; align-items: center; width: 100%; min-height: 32px; box-sizing: border-box; }
-  #pill.open #topline { min-height: 54px; }
-  #art { position: relative; width: 30px; height: 30px; border-radius: 9px; background: #222 center/cover; flex: none; transition: all .35s; }
-  #pill.open #art { width: 54px; height: 54px; border-radius: 15px; }
-  #source-badge { position: absolute; right: -5px; bottom: -5px; width: 17px; height: 17px; box-sizing: border-box; overflow: hidden; display: grid; place-items: center; border: 2px solid #000; border-radius: 50%; background: #333; color: #fff; font-size: 9px; font-weight: 700; }
+
+  /* Expanded Mac Dynamic Island */
+  #pill.open {
+    width: 636px;
+    height: 242px;
+    border-radius: 34px;
+    padding: 12px 18px 10px 18px;
+    flex-direction: column;
+    align-items: stretch;
+    background: var(--bg-surface);
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+    border: 1px solid var(--border-subtle);
+  }
+
+  /* Topline / Collapsed Header */
+  #topline {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 32px;
+    box-sizing: border-box;
+  }
+
+  #pill.open #topline {
+    min-height: 34px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  /* Collapsed Header Elements */
+  #art {
+    position: relative;
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    background: #1c1c1e center/cover no-repeat;
+    flex: none;
+    transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #source-badge {
+    position: absolute;
+    right: -4px;
+    bottom: -4px;
+    width: 16px;
+    height: 16px;
+    box-sizing: border-box;
+    overflow: hidden;
+    display: grid;
+    place-items: center;
+    border: 2px solid #000;
+    border-radius: 50%;
+    background: #2c2c2e;
+    color: #fff;
+    font-size: 8px;
+    font-weight: 700;
+  }
+
   #source-icon { width: 100%; height: 100%; object-fit: cover; }
   #source-fallback { display: none; text-transform: uppercase; }
-  #info { display: none; min-width: 0; margin: 0 12px; opacity: 0; width: 0; transition: opacity .25s; }
-  #pill.open #info { display: block; flex: 1; opacity: 1; width: auto; }
-  #title { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  #artist { font-size: 13px; color: #9a9a9a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 3px; }
-  #wave { display: flex; align-items: center; gap: 3px; height: 22px; flex: none; margin-left: 10px; }
-  #pill.open #wave { margin-left: 0; }
-  #wave i { display: block; width: 3px; border-radius: 3px; background: var(--accent); height: 6px; }
-  #pill.playing #wave i { animation: bar .9s ease-in-out infinite; }
-  #wave i:nth-child(1) { animation-delay: -.7s } #wave i:nth-child(2) { animation-delay: -.3s }
-  #wave i:nth-child(3) { animation-delay: -.5s } #wave i:nth-child(4) { animation-delay: -.1s }
-  #wave i:nth-child(5) { animation-delay: -.6s }
+
+  #collapsed-info {
+    flex: 1;
+    min-width: 0;
+    margin: 0 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  #pill.open #collapsed-info { display: none; }
+
+  #collapsed-title {
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+  }
+
+  #collapsed-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 1px;
+  }
+
+  /* Sound wave bars */
+  #wave {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    height: 20px;
+    flex: none;
+    margin-left: auto;
+    margin-right: 6px;
+  }
+
+  #wave i {
+    display: block;
+    width: 3px;
+    border-radius: 3px;
+    background: var(--accent);
+    height: 5px;
+    transition: height 0.2s ease;
+  }
+
+  #pill.playing #wave i { animation: bar 0.9s ease-in-out infinite; }
+  #wave i:nth-child(1) { animation-delay: -0.7s; }
+  #wave i:nth-child(2) { animation-delay: -0.3s; }
+  #wave i:nth-child(3) { animation-delay: -0.5s; }
+  #wave i:nth-child(4) { animation-delay: -0.1s; }
+  #wave i:nth-child(5) { animation-delay: -0.6s; }
+
+  @keyframes bar { 0%, 100% { height: 5px; } 50% { height: 20px; } }
+
+  /* 3D Interactive Sticker Box */
   #sticker-box {
-    width: 28px; height: 28px; flex: none; display: flex; align-items: center; justify-content: center;
-    cursor: pointer; margin-left: auto; position: relative; user-select: none; -webkit-user-drag: none;
+    width: 28px;
+    height: 28px;
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    user-select: none;
+    -webkit-user-drag: none;
     perspective: 600px;
   }
-  #pill.open #sticker-box { margin-left: 12px; }
+
   #sticker-box svg {
-    width: 100% !important; height: 100% !important; display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
     transform-origin: center center !important;
     transform: var(--sticker-offset, translate(0, 0)) var(--sticker-tilt, rotate(0deg)) perspective(600px) rotateX(0deg) rotateY(0deg) translateY(0) scale(1);
     filter: drop-shadow(0 2px 4px rgba(0,0,0,0.35));
     transition: transform 350ms cubic-bezier(0.34, 1.56, 0.64, 1), filter 350ms cubic-bezier(0.34, 1.56, 0.64, 1);
     pointer-events: auto;
   }
+
   #sticker-box:hover svg {
-    transform: var(--sticker-offset, translate(0, 0)) var(--sticker-tilt, rotate(0deg)) perspective(600px) rotateX(12deg) rotateY(-12deg) translateY(-3px) scale(1.15);
-    filter: drop-shadow(0 10px 14px rgba(0,0,0,0.6));
+    transform: var(--sticker-offset, translate(0, 0)) var(--sticker-tilt, rotate(0deg)) perspective(600px) rotateX(12deg) rotateY(-12deg) translateY(-2px) scale(1.15);
+    filter: drop-shadow(0 8px 12px rgba(0,0,0,0.6));
   }
+
   #sticker-box:active svg {
     transform: var(--sticker-offset, translate(0, 0)) var(--sticker-tilt, rotate(0deg)) scale(0.92);
-    transition: transform 100ms ease;
   }
-  @keyframes stickerSlap {
-    0% { transform: scale(0.4) rotate(-15deg); opacity: 0; }
-    60% { transform: scale(1.18) rotate(5deg); opacity: 1; }
-    100% { transform: scale(1) rotate(0deg); opacity: 1; }
+
+  /* Segmented Navigation Tabs (Mac Style) */
+  #tab-bar {
+    display: none;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.07);
+    padding: 3px;
+    border-radius: 10px;
   }
-  .sticker-slap svg {
-    animation: stickerSlap 380ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+
+  #pill.open #tab-bar { display: flex; }
+
+  .tab-item {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 7px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.2s ease;
   }
-  #phone-btn { display: none; width: 28px; height: 28px; margin-left: 10px; border: 0; border-radius: 50%; background: #222; color: #a5a5a5; cursor: pointer; align-items: center; justify-content: center; transition: all .2s; }
-  #pill.open #phone-btn { display: flex; }
-  #phone-btn:hover { color: #fff; background: #383838; }
-  #close { display: none; width: 28px; height: 28px; margin-left: 6px; border: 0; border-radius: 50%; background: #222; color: #a5a5a5; cursor: pointer; align-items: center; justify-content: center; transition: all .2s; }
-  #pill.open #close { display: flex; }
-  #close:hover { color: #fff; background: #383838; }
-  #progress-row { display: none; align-items: center; gap: 10px; margin: 4px 1px 0; color: #a5a5a5; font-size: 11px; font-variant-numeric: tabular-nums; }
-  #pill.open #progress-row { display: flex; }
-  #progress { appearance: none; flex: 1; min-width: 0; height: 5px; border-radius: 99px; outline: none; cursor: pointer; background: linear-gradient(to right, var(--accent) var(--progress, 0%), #333 var(--progress, 0%)); }
-  #progress::-webkit-slider-thumb { appearance: none; width: 10px; height: 10px; border-radius: 50%; background: #fff; }
-  #ctrls { display: none; justify-content: center; align-items: center; gap: 26px; margin-top: 6px; }
-  #pill.open #ctrls { display: flex; }
-  #ctrls button { background: none; border: 0; color: #fff; cursor: pointer; padding: 6px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: transform .15s ease, color .15s ease, background .15s ease; }
-  #ctrls button:hover { color: var(--accent); transform: scale(1.15); }
-  #ctrls button:active { transform: scale(0.92); }
-  #ctrls #pp { width: 38px; height: 38px; background: rgba(255, 255, 255, 0.12); border-radius: 50%; }
-  #ctrls #pp:hover { background: rgba(255, 255, 255, 0.22); color: #fff; }
-  @keyframes bar { 0%,100% { height: 6px } 50% { height: 22px } }
+
+  .tab-item svg { width: 12px; height: 12px; }
+  .tab-item:hover { color: var(--text-main); }
+  .tab-item.active {
+    background: rgba(255, 255, 255, 0.16);
+    color: var(--text-main);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  }
+
+  /* Top Right Action Icons */
+  #header-actions {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+  }
+
+  #pill.open #header-actions { display: flex; }
+
+  .act-btn {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+
+  .act-btn:hover { background: rgba(255, 255, 255, 0.18); color: #fff; }
+  .act-btn:active { transform: scale(0.92); }
+
+  /* Body Panel / Switchable Content */
+  #panel-container {
+    display: none;
+    flex: 1;
+    min-height: 0;
+    margin-top: 10px;
+  }
+
+  #pill.open #panel-container { display: flex; flex-direction: column; }
+
+  .view-panel { display: none; height: 100%; flex-direction: column; justify-content: center; }
+  .view-panel.active { display: flex; }
+
+  /* --- Panel 1: Media Player --- */
+  #media-panel {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  #media-panel.active { display: flex; }
+
+  .media-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+  }
+
+  #panel-art {
+    width: 52px;
+    height: 52px;
+    border-radius: 12px;
+    background: #242429 center/cover no-repeat;
+    flex: none;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+    position: relative;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .media-meta {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  #panel-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  #panel-artist {
+    font-size: 13px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 2px;
+  }
+
+  .media-ctrls-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  #progress-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    color: var(--text-dim);
+    font-size: 10.5px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  #progress {
+    appearance: none;
+    -webkit-appearance: none;
+    flex: 1;
+    height: 4px;
+    border-radius: 99px;
+    outline: none;
+    cursor: pointer;
+    background: linear-gradient(to right, var(--accent) var(--progress, 0%), var(--slider-track) var(--progress, 0%));
+  }
+
+  #progress::-webkit-slider-thumb {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  }
+
+  .player-buttons {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-left: 16px;
+  }
+
+  .p-btn {
+    background: none;
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    padding: 6px;
+    transition: transform 0.15s ease, color 0.15s ease;
+  }
+
+  .p-btn:hover { color: var(--accent); transform: scale(1.12); }
+  .p-btn:active { transform: scale(0.92); }
+
+  #pp {
+    width: 34px;
+    height: 34px;
+    background: rgba(255, 255, 255, 0.14);
+    border-radius: 50%;
+  }
+
+  #pp:hover { background: rgba(255, 255, 255, 0.24); color: #fff; }
+
+  /* --- Panel 2: Mac Calendar & Live Clock (Image 1 replica) --- */
+  #calendar-panel {
+    display: none;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    height: 100%;
+  }
+
+  #calendar-panel.active { display: flex; }
+
+  .clock-widget-left {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 160px;
+  }
+
+  .live-time-big {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: var(--text-main);
+    line-height: 1.1;
+  }
+
+  .live-date-str {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--accent);
+    margin-top: 4px;
+  }
+
+  .live-calendar-card {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .cal-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .cal-month-year {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-main);
+  }
+
+  .cal-schedule-tag {
+    font-size: 11px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .cal-days-strip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+  }
+
+  .cal-day-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 6px;
+    border-radius: 10px;
+    min-width: 28px;
+    cursor: default;
+    transition: background 0.2s ease;
+  }
+
+  .cal-day-name {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+
+  .cal-day-num {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-main);
+    margin-top: 2px;
+  }
+
+  .cal-day-cell.today {
+    background: var(--mac-blue);
+    box-shadow: 0 2px 8px rgba(0, 122, 255, 0.45);
+  }
+
+  .cal-day-cell.today .cal-day-name { color: rgba(255, 255, 255, 0.85); font-weight: 700; }
+  .cal-day-cell.today .cal-day-num { color: #ffffff; font-weight: 700; }
+
+  /* --- Panel 3: Mac Sliders (Image 3 replica) --- */
+  #controls-panel {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    gap: 12px;
+    height: 100%;
+    padding: 0 4px;
+  }
+
+  #controls-panel.active { display: flex; }
+
+  .mac-slider-box {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .slider-icon {
+    width: 20px;
+    height: 20px;
+    color: var(--text-muted);
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mac-slider-wrap {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .mac-slider {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 100%;
+    height: 8px;
+    border-radius: 99px;
+    outline: none;
+    cursor: pointer;
+    background: linear-gradient(to right, #ffffff var(--val, 50%), rgba(255, 255, 255, 0.16) var(--val, 50%));
+    transition: background 0.1s ease;
+  }
+
+  .mac-slider::-webkit-slider-thumb {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+    cursor: grab;
+  }
+
+  .mac-slider::-webkit-slider-thumb:active { cursor: grabbing; transform: scale(1.1); }
+
+  .slider-val-txt {
+    width: 40px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* --- Bottom Pinned Apps Dock (Image 2 replica) --- */
+  #pinned-dock {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-top: auto;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  #pill.open #pinned-dock { display: flex; }
+
+  .dock-item {
+    position: relative;
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  }
+
+  .dock-item:hover {
+    transform: translateY(-4px) scale(1.22);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.55);
+    z-index: 10;
+  }
+
+  .dock-item:active { transform: translateY(-1px) scale(0.96); }
+
+  .dock-item svg { width: 22px; height: 22px; }
+
+  .dock-tooltip {
+    position: absolute;
+    bottom: -22px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(30, 30, 35, 0.95);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .dock-item:hover .dock-tooltip { opacity: 1; }
 </style>
 </head>
 <body>
 <div id="wrap">
-  <div id="pill">
+  <div id="pill" class="show">
+    <!-- Top Header / Collapsed Notch Bar -->
     <div id="topline">
+      <!-- Media art / Clock Icon -->
       <div id="art">
-        <span id="source-badge" title="Media source" aria-label="Media source">
+        <span id="source-badge" title="Source">
           <img id="source-icon" alt="">
-          <span id="source-fallback"></span>
+          <span id="source-fallback">M</span>
         </span>
       </div>
-      <div id="info">
-        <div id="title"></div>
-        <div id="artist"></div>
+
+      <!-- Collapsed Text View (when closed) -->
+      <div id="collapsed-info">
+        <div id="collapsed-title">Media Island</div>
+        <div id="collapsed-sub">Ready to play</div>
       </div>
+
+      <!-- Segmented Tabs (when open) -->
+      <div id="tab-bar">
+        <button class="tab-item active" data-tab="media-panel">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+          Music
+        </button>
+        <button class="tab-item" data-tab="calendar-panel">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"/></svg>
+          Calendar
+        </button>
+        <button class="tab-item" data-tab="controls-panel">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z"/></svg>
+          Controls
+        </button>
+      </div>
+
+      <!-- Sound Visualizer Wave -->
       <div id="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+
+      <!-- 3D Interactive Sticker Box -->
       <div id="sticker-box" class="sticker-peel" role="button" tabindex="0" title="Click to change sticker"></div>
-      <button id="phone-btn" aria-label="Phone Remote & QR Pairing" title="Show Phone Remote QR Code">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 14h3v3h-3z"/><path d="M20 14v.01"/><path d="M14 20v.01"/><path d="M17 17v3"/><path d="M20 17v3"/></svg>
-      </button>
-      <button id="close" aria-label="Close Media Island" title="Close Media Island">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
+
+      <!-- Header Action Buttons (Open Mode) -->
+      <div id="header-actions">
+        <button id="phone-btn" class="act-btn" aria-label="Phone Remote QR" title="Phone Remote & QR Pairing">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 14h3v3h-3z"/><path d="M17 17v3"/><path d="M20 17v3"/></svg>
+        </button>
+        <button id="settings-btn" class="act-btn" aria-label="Settings" title="Media Island Settings">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+        <button id="close" class="act-btn" aria-label="Collapse" title="Collapse Island">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
     </div>
-    <div id="progress-row">
-      <span id="elapsed">0:00</span>
-      <input id="progress" aria-label="Seek through media" type="range" min="0" max="100" value="0">
-      <span id="remaining">-0:00</span>
+
+    <!-- Center Content Panel Container -->
+    <div id="panel-container">
+      <!-- 1. Music Panel -->
+      <div id="media-panel" class="view-panel active">
+        <div class="media-row">
+          <div id="panel-art"></div>
+          <div class="media-meta">
+            <div id="panel-title">No track playing</div>
+            <div id="panel-artist">Play from Spotify, Chrome or any media app</div>
+          </div>
+        </div>
+        <div class="media-ctrls-row">
+          <div id="progress-row">
+            <span id="elapsed">0:00</span>
+            <input id="progress" aria-label="Seek media" type="range" min="0" max="100" value="0">
+            <span id="remaining">-0:00</span>
+          </div>
+          <div class="player-buttons">
+            <button id="prev" class="p-btn" aria-label="Previous" title="Previous Track">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 6c.55 0 1 .45 1 1v10c0 .55-.45 1-1 1s-1-.45-1-1V7c0-.55.45-1 1-1zm3.66 6.82 7.04 4.88c.67.46 1.58-.02 1.58-.82V7.12c0-.8-.91-1.28-1.58-.82l-7.04 4.88c-.46.32-.46 1 0 1.64z"/></svg>
+            </button>
+            <button id="pp" class="p-btn" aria-label="Play/Pause" title="Play or pause">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 6.82v10.36c0 .79.87 1.27 1.54.84l8.14-5.18c.62-.39.62-1.29 0-1.69L9.54 5.98C8.87 5.55 8 6.03 8 6.82z"/></svg>
+            </button>
+            <button id="next" class="p-btn" aria-label="Next" title="Next Track">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17 6c.55 0 1 .45 1 1v10c0 .55-.45 1-1 1s-1-.45-1-1V7c0-.55.45-1 1-1zM5.72 6.3c-.67-.46-1.58.02-1.58.82v9.76c0 .8.91 1.28 1.58.82l7.04-4.88c.46-.32.46-1 0-1.64L5.72 6.3z"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Mac Calendar & Clock Widget (Image 1 replica) -->
+      <div id="calendar-panel" class="view-panel">
+        <div class="clock-widget-left">
+          <div id="live-clock" class="live-time-big">12:00 PM</div>
+          <div id="live-date-str" class="live-date-str">Thursday, Nov 13</div>
+        </div>
+        <div class="live-calendar-card">
+          <div class="cal-header-row">
+            <span id="cal-month-year" class="cal-month-year">Nov 2026</span>
+            <span class="cal-schedule-tag">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Today
+            </span>
+          </div>
+          <div id="cal-days-strip" class="cal-days-strip">
+            <!-- 7-day pill calendar populated dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Mac System Sliders (Image 3 replica) -->
+      <div id="controls-panel" class="view-panel">
+        <!-- Brightness Slider -->
+        <div class="mac-slider-box">
+          <div class="slider-icon" title="Display Brightness">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+          </div>
+          <div class="mac-slider-wrap">
+            <input id="bright-slider" class="mac-slider" type="range" min="0" max="100" value="70">
+          </div>
+          <div id="bright-val-txt" class="slider-val-txt">70%</div>
+        </div>
+
+        <!-- Volume Slider -->
+        <div class="mac-slider-box">
+          <div class="slider-icon" title="Master Volume">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+          </div>
+          <div class="mac-slider-wrap">
+            <input id="vol-slider" class="mac-slider" type="range" min="0" max="100" value="50">
+          </div>
+          <div id="vol-val-txt" class="slider-val-txt">50%</div>
+        </div>
+      </div>
     </div>
-    <div id="ctrls">
-      <button id="prev" aria-label="Previous track" title="Previous">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M7 6c.55 0 1 .45 1 1v10c0 .55-.45 1-1 1s-1-.45-1-1V7c0-.55.45-1 1-1zm3.66 6.82 7.04 4.88c.67.46 1.58-.02 1.58-.82V7.12c0-.8-.91-1.28-1.58-.82l-7.04 4.88c-.46.32-.46 1 0 1.64z"/></svg>
-      </button>
-      <button id="pp" aria-label="Play or pause" title="Play or pause">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 6.82v10.36c0 .79.87 1.27 1.54.84l8.14-5.18c.62-.39.62-1.29 0-1.69L9.54 5.98C8.87 5.55 8 6.03 8 6.82z"/></svg>
-      </button>
-      <button id="next" aria-label="Next track" title="Next">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M17 6c.55 0 1 .45 1 1v10c0 .55-.45 1-1 1s-1-.45-1-1V7c0-.55.45-1 1-1zM5.72 6.3c-.67-.46-1.58.02-1.58.82v9.76c0 .8.91 1.28 1.58.82l7.04-4.88c.46-.32.46-1 0-1.64L5.72 6.3z"/></svg>
-      </button>
+
+    <!-- Bottom Pinned Apps Dock (Image 2 replica) -->
+    <div id="pinned-dock">
+      <!-- Populated dynamically via settings.pinnedApps or fallback -->
     </div>
   </div>
 </div>
+
 <script>
   const pill = document.getElementById("pill");
   const $ = id => document.getElementById(id);
+
   let duration = 0;
   let currentTrack = "";
   let dismissedTrack = "";
   let dragging = false;
+  let currentTimeFormat = "12h";
+
   const formatTime = seconds => {
     const total = Number.isFinite(seconds) && seconds > 0 ? Math.floor(seconds) : 0;
     return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
   };
-  const setAccent = color => document.documentElement.style.setProperty("--accent", color);
-  $("source-icon").addEventListener("error", () => {
-    $("source-icon").style.display = "none";
-    $("source-fallback").style.display = "block";
-  });
+
+  const setAccent = color => {
+    if (color) document.documentElement.style.setProperty("--accent", color);
+  };
 
   const ICON_PLAY = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 6.82v10.36c0 .79.87 1.27 1.54.84l8.14-5.18c.62-.39.62-1.29 0-1.69L9.54 5.98C8.87 5.55 8 6.03 8 6.82z"/></svg>';
   const ICON_PAUSE = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 6c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1s1-.45 1-1V7c0-.55-.45-1-1-1zm8 0c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1s1-.45 1-1V7c0-.55-.45-1-1-1z"/></svg>';
 
+  // --- Clock & Calendar Logic (Image 1 replica) ---
+  function updateLiveClock() {
+    const now = new Date();
+    let hours = now.getHours();
+    const minutes = String(now.getMinutes()).padStart(2, "0");
+    let ampm = "";
+
+    if (currentTimeFormat === "12h") {
+      ampm = hours >= 12 ? " PM" : " AM";
+      hours = hours % 12 || 12;
+    } else {
+      hours = String(hours).padStart(2, "0");
+    }
+
+    const timeStr = `${hours}:${minutes}${ampm}`;
+    $("live-clock").textContent = timeStr;
+
+    // Update collapsed display if idle
+    if (!pill.classList.contains("playing") && !currentTrack) {
+      $("collapsed-title").textContent = timeStr;
+      $("collapsed-sub").textContent = now.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+    }
+
+    const options = { weekday: "long", month: "short", day: "numeric" };
+    $("live-date-str").textContent = now.toLocaleDateString(undefined, options);
+
+    // Month & Year
+    $("cal-month-year").textContent = now.toLocaleDateString(undefined, { month: "short", year: "numeric" });
+  }
+
+  function renderCalendarStrip() {
+    const strip = $("cal-days-strip");
+    strip.innerHTML = "";
+    const today = new Date();
+    const dayNames = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
+    // Render 7 days centered around today (-3 to +3)
+    for (let offset = -3; offset <= 3; offset++) {
+      const d = new Date();
+      d.setDate(today.getDate() + offset);
+
+      const cell = document.createElement("div");
+      cell.className = "cal-day-cell" + (offset === 0 ? " today" : "");
+
+      const name = document.createElement("div");
+      name.className = "cal-day-name";
+      name.textContent = dayNames[d.getDay()];
+
+      const num = document.createElement("div");
+      num.className = "cal-day-num";
+      num.textContent = String(d.getDate()).padStart(2, "0");
+
+      cell.appendChild(name);
+      cell.appendChild(num);
+      strip.appendChild(cell);
+    }
+  }
+
+  setInterval(updateLiveClock, 1000);
+  updateLiveClock();
+  renderCalendarStrip();
+
+  // --- Tab Navigation ---
+  document.querySelectorAll(".tab-item").forEach(btn => {
+    btn.addEventListener("click", e => {
+      e.stopPropagation();
+      document.querySelectorAll(".tab-item").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".view-panel").forEach(p => p.classList.remove("active"));
+      btn.classList.add("active");
+      const targetPanel = $(btn.dataset.tab);
+      if (targetPanel) targetPanel.classList.add("active");
+    });
+  });
+
+  // --- System Sliders (Image 3 replica) ---
+  function updateSliderVisual(slider, val) {
+    slider.value = val;
+    slider.style.setProperty("--val", `${val}%`);
+  }
+
+  $("vol-slider").addEventListener("input", e => {
+    const val = Number(e.target.value);
+    e.target.style.setProperty("--val", `${val}%`);
+    $("vol-val-txt").textContent = `${val}%`;
+  });
+  $("vol-slider").addEventListener("change", e => {
+    const val = Number(e.target.value);
+    window.island.setVolume(val);
+  });
+
+  $("bright-slider").addEventListener("input", e => {
+    const val = Number(e.target.value);
+    e.target.style.setProperty("--val", `${val}%`);
+    $("bright-val-txt").textContent = `${val}%`;
+  });
+  $("bright-slider").addEventListener("change", e => {
+    const val = Number(e.target.value);
+    window.island.setBrightness(val);
+  });
+
+  window.island.onSystemControls(ctrls => {
+    if (!ctrls) return;
+    if (ctrls.volume != null && !$("vol-slider").matches(":active")) {
+      updateSliderVisual($("vol-slider"), ctrls.volume);
+      $("vol-val-txt").textContent = `${ctrls.volume}%`;
+    }
+    if (ctrls.brightness != null && !$("bright-slider").matches(":active")) {
+      updateSliderVisual($("bright-slider"), ctrls.brightness);
+      $("bright-val-txt").textContent = `${ctrls.brightness}%`;
+    }
+  });
+
+  window.island.getSystemControls().then(ctrls => {
+    if (!ctrls) return;
+    if (ctrls.volume != null) {
+      updateSliderVisual($("vol-slider"), ctrls.volume);
+      $("vol-val-txt").textContent = `${ctrls.volume}%`;
+    }
+    if (ctrls.brightness != null) {
+      updateSliderVisual($("bright-slider"), ctrls.brightness);
+      $("bright-val-txt").textContent = `${ctrls.brightness}%`;
+    }
+  });
+
+  // --- Pinned Apps Dock (Image 2 replica) ---
+  const DEFAULT_PINNED_APPS = [
+    { id: "spotify", name: "Spotify", icon: "spotify", target: "spotify:", bg: "#1db954" },
+    { id: "chrome", name: "Chrome", icon: "chrome", target: "chrome", bg: "#4285f4" },
+    { id: "vscode", name: "VS Code", icon: "code", target: "code", bg: "#007acc" },
+    { id: "whatsapp", name: "WhatsApp", icon: "whatsapp", target: "whatsapp:", bg: "#25d366" },
+    { id: "explorer", name: "Files", icon: "folder", target: "explorer.exe", bg: "#fbc02d" },
+    { id: "terminal", name: "Terminal", icon: "terminal", target: "powershell.exe", bg: "#24292e" },
+    { id: "calc", name: "Calculator", icon: "calculator", target: "calc.exe", bg: "#ff9500" },
+    { id: "settings", name: "Settings", icon: "settings", target: "ms-settings:", bg: "#5856d6" }
+  ];
+
+  const APP_SVGS = {
+    spotify: '<svg viewBox="0 0 24 24" fill="#ffffff"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>',
+    chrome: '<svg viewBox="0 0 24 24" fill="#ffffff"><circle cx="12" cy="12" r="10" fill="none" stroke="#ffffff" stroke-width="2"/><circle cx="12" cy="12" r="4"/><path d="M12 2a10 10 0 0 1 8.66 5H12"/><path d="m20.66 7-5 8.66"/><path d="M7 17.32 12 12"/></svg>',
+    code: '<svg viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
+    whatsapp: '<svg viewBox="0 0 24 24" fill="#ffffff"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.23 8.23 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.45 0-2.87-.38-4.12-1.12l-.3-.18-3.07.8 8.2-2.99-.19-.31a8.19 8.19 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24z"/></svg>',
+    folder: '<svg viewBox="0 0 24 24" fill="#ffffff"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>',
+    terminal: '<svg viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>',
+    calculator: '<svg viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="16" y1="14" x2="16" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg>',
+    settings: '<svg viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>'
+  };
+
+  function renderPinnedDock(apps) {
+    const dock = $("pinned-dock");
+    dock.innerHTML = "";
+    const list = Array.isArray(apps) && apps.length > 0 ? apps : DEFAULT_PINNED_APPS;
+
+    list.forEach(app => {
+      const item = document.createElement("div");
+      item.className = "dock-item";
+      item.style.backgroundColor = app.bg || "#2c2c2e";
+      item.title = app.name;
+
+      const svgContent = APP_SVGS[app.icon] || APP_SVGS.settings;
+      item.innerHTML = svgContent;
+
+      const tip = document.createElement("span");
+      tip.className = "dock-tooltip";
+      tip.textContent = app.name;
+      item.appendChild(tip);
+
+      item.addEventListener("click", e => {
+        e.stopPropagation();
+        window.island.launchApp(app.target);
+      });
+
+      dock.appendChild(item);
+    });
+  }
+
+  if (window.island.getPinnedApps) {
+    window.island.getPinnedApps().then(renderPinnedDock);
+  }
+  if (window.island.onPinnedApps) {
+    window.island.onPinnedApps(renderPinnedDock);
+  } else {
+    renderPinnedDock(DEFAULT_PINNED_APPS);
+  }
+
+  if (window.island.getTimeFormat) {
+    window.island.getTimeFormat().then(fmt => {
+      if (fmt) currentTimeFormat = fmt;
+      updateLiveClock();
+    });
+  }
+  if (window.island.onTimeFormat) {
+    window.island.onTimeFormat(fmt => {
+      if (fmt) currentTimeFormat = fmt;
+      updateLiveClock();
+    });
+  }
+
+  // --- Accent & Sticker Wiring ---
   window.island.getAccentColor().then(setAccent);
   window.island.onAccentColor(setAccent);
+
   if (window.island.onSelectSticker) {
     window.island.onSelectSticker(stickerId => {
       if (window.selectIslandSticker) window.selectIslandSticker(stickerId);
     });
   }
+
+  // --- Media State Listener ---
   window.island.onState(s => {
-    if (s.type === "none") { pill.classList.remove("show", "open", "playing"); return; }
+    if (!s || s.type === "none") {
+      pill.classList.remove("playing");
+      currentTrack = "";
+      $("panel-title").textContent = "No track playing";
+      $("panel-artist").textContent = "Play from Spotify, Chrome or any media app";
+      $("panel-art").style.backgroundImage = "none";
+      updateLiveClock();
+      return;
+    }
+
     const track = JSON.stringify([s.title || "", s.artist || "", s.art || ""]);
     if (track !== currentTrack) {
       currentTrack = track;
       if (track !== dismissedTrack) dismissedTrack = "";
       if (window.changeIslandSticker) window.changeIslandSticker();
     }
-    pill.classList.toggle("show", track !== dismissedTrack);
+
     const isPlaying = !!s.playing;
     pill.classList.toggle("playing", isPlaying);
+
     $("pp").innerHTML = isPlaying ? ICON_PAUSE : ICON_PLAY;
     $("pp").setAttribute("aria-label", isPlaying ? "Pause" : "Play");
     $("pp").setAttribute("title", isPlaying ? "Pause" : "Play");
-    $("title").textContent = s.title || "";
-    $("artist").textContent = s.artist || "";
-    $("art").style.backgroundImage = s.art ? `url("${s.art}")` : "none";
-    const sourceName = s.sourceName || "Unknown source";
+
+    // Titles
+    const titleText = s.title || "Unknown Title";
+    const artistText = s.artist || "Unknown Artist";
+    $("collapsed-title").textContent = titleText;
+    $("collapsed-sub").textContent = artistText;
+    $("panel-title").textContent = titleText;
+    $("panel-artist").textContent = artistText;
+
+    // Artwork
+    const artUrl = s.art ? `url("${s.art}")` : "none";
+    $("art").style.backgroundImage = artUrl;
+    $("panel-art").style.backgroundImage = artUrl;
+
+    // Source badge
+    const sourceName = s.sourceName || (s.source === "spotify" ? "Spotify" : "Media");
     const sourceIcon = s.sourceIcon || "";
     $("source-badge").title = sourceName;
-    $("source-badge").setAttribute("aria-label", `Playing from ${sourceName}`);
-    $("source-fallback").textContent = sourceName.charAt(0) || "?";
+    $("source-fallback").textContent = sourceName.charAt(0) || "M";
+
     if ($("source-icon").dataset.sourceIcon !== sourceIcon) {
       $("source-icon").dataset.sourceIcon = sourceIcon;
       $("source-icon").style.display = sourceIcon ? "block" : "none";
@@ -182,6 +1070,8 @@
       if (sourceIcon) $("source-icon").src = sourceIcon;
       else $("source-icon").removeAttribute("src");
     }
+
+    // Seekbar
     duration = Number.isFinite(s.duration) && s.duration > 0 ? s.duration : 0;
     const current = Number.isFinite(s.currentTime) ? s.currentTime : 0;
     const percent = duration ? Math.min(100, Math.max(0, current / duration * 100)) : 0;
@@ -191,42 +1081,67 @@
     $("elapsed").textContent = formatTime(current);
     $("remaining").textContent = `-${formatTime(Math.max(0, duration - current))}`;
   });
-  pill.addEventListener("mouseenter", () => { window.island.interactive(true); pill.classList.add("open"); });
-  pill.addEventListener("mouseleave", () => {
-    if (!dragging) { pill.classList.remove("open"); window.island.interactive(false); }
+
+  // --- Interaction & Dragging ---
+  pill.addEventListener("mouseenter", () => {
+    window.island.interactive(true);
+    pill.classList.add("open");
   });
+
+  pill.addEventListener("mouseleave", () => {
+    if (!dragging) {
+      pill.classList.remove("open");
+      window.island.interactive(false);
+    }
+  });
+
   pill.addEventListener("pointerdown", event => {
-    if (event.target.closest("button, input, #sticker-box")) return;
+    if (event.target.closest("button, input, #sticker-box, .dock-item, .tab-item")) return;
     dragging = true;
     pill.classList.add("dragging");
     pill.setPointerCapture(event.pointerId);
     window.island.drag("start", event.screenX, event.screenY);
   });
+
   pill.addEventListener("pointermove", event => {
     if (dragging) window.island.drag("move", event.screenX, event.screenY);
   });
+
   const endDrag = event => {
     if (!dragging) return;
     dragging = false;
     pill.classList.remove("dragging");
     window.island.drag("end", event.screenX, event.screenY);
   };
+
   pill.addEventListener("pointerup", endDrag);
   pill.addEventListener("pointercancel", endDrag);
+
+  // --- Buttons ---
   $("phone-btn").addEventListener("click", event => {
     event.stopPropagation();
     window.island.openSettings("tab-remote");
   });
+
+  $("settings-btn").addEventListener("click", event => {
+    event.stopPropagation();
+    window.island.openSettings("tab-mac");
+  });
+
   $("close").addEventListener("click", event => {
     event.stopPropagation();
-    dismissedTrack = currentTrack;
-    pill.classList.remove("show", "open", "playing");
+    pill.classList.remove("open");
     window.island.interactive(false);
   });
-  $("pp").onclick = () => window.island.cmd("playpause");
-  $("next").onclick = () => window.island.cmd("next");
-  $("prev").onclick = () => window.island.cmd("prev");
-  $("progress").addEventListener("change", event => window.island.cmd("seek", Number(event.target.value)));
+
+  $("pp").onclick = e => { e.stopPropagation(); window.island.cmd("playpause"); };
+  $("next").onclick = e => { e.stopPropagation(); window.island.cmd("next"); };
+  $("prev").onclick = e => { e.stopPropagation(); window.island.cmd("prev"); };
+
+  $("progress").addEventListener("change", event => {
+    window.island.cmd("seek", Number(event.target.value));
+  });
+
   $("progress").addEventListener("input", event => {
     const current = Number(event.target.value);
     const percent = duration ? current / duration * 100 : 0;

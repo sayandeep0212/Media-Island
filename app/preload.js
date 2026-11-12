@@ -19,5 +19,18 @@ contextBridge.exposeInMainWorld("island", {
   getGlowConfig: () => ipcRenderer.invoke("glow:getConfig"),
   setGlowConfig: cfg => ipcRenderer.invoke("glow:setConfig", cfg),
   toggleGlow: () => ipcRenderer.invoke("glow:toggle"),
-  toggleSleepBlackout: () => ipcRenderer.invoke("glow:toggleBlackout")
+  toggleSleepBlackout: () => ipcRenderer.invoke("glow:toggleBlackout"),
+
+  // System Controls & Pinned Apps
+  getSystemControls: () => ipcRenderer.invoke("system:getControls"),
+  setVolume: level => ipcRenderer.invoke("system:setVolume", level),
+  setBrightness: level => ipcRenderer.invoke("system:setBrightness", level),
+  launchApp: target => ipcRenderer.invoke("system:launchApp", target),
+  getPinnedApps: () => ipcRenderer.invoke("settings:getPinnedApps"),
+  savePinnedApps: apps => ipcRenderer.invoke("settings:savePinnedApps", apps),
+  onPinnedApps: cb => ipcRenderer.on("pinned-apps", (_e, apps) => cb(apps)),
+  getTimeFormat: () => ipcRenderer.invoke("settings:getTimeFormat"),
+  setTimeFormat: fmt => ipcRenderer.invoke("settings:setTimeFormat", fmt),
+  onTimeFormat: cb => ipcRenderer.on("time-format", (_e, fmt) => cb(fmt)),
+  onSystemControls: cb => ipcRenderer.on("system-controls", (_e, data) => cb(data))
 });
