@@ -26,8 +26,8 @@
   }
 
   #wrap {
-    width: 660px;
-    height: 260px;
+    width: 100vw;
+    height: 100vh;
     display: flex;
     justify-content: center;
     align-items: flex-start;
@@ -1082,16 +1082,52 @@
     $("remaining").textContent = `-${formatTime(Math.max(0, duration - current))}`;
   });
 
-  // --- Interaction & Dragging ---
-  pill.addEventListener("mouseenter", () => {
-    window.island.interactive(true);
+  // --- Expansion & Stability Management (Fixes cursor lag & indecision) ---
+  let isExpanded = false;
+  let isPinned = false;
+  let leaveTimer = null;
+
+  function expandIsland() {
+    clearTimeout(leaveTimer);
+    if (isExpanded) return;
+    isExpanded = true;
+    window.island.setExpanded(true);
     pill.classList.add("open");
+  }
+
+  function collapseIsland(force = false) {
+    if (!isExpanded) return;
+    if (isPinned && !force) return;
+    isExpanded = false;
+    isPinned = false;
+    pill.classList.remove("open");
+    setTimeout(() => {
+      if (!isExpanded) {
+        window.island.setExpanded(false);
+      }
+    }, 280);
+  }
+
+  pill.addEventListener("mouseenter", () => {
+    clearTimeout(leaveTimer);
+    expandIsland();
   });
 
   pill.addEventListener("mouseleave", () => {
-    if (!dragging) {
-      pill.classList.remove("open");
-      window.island.interactive(false);
+    if (dragging || isPinned) return;
+    clearTimeout(leaveTimer);
+    leaveTimer = setTimeout(() => {
+      collapseIsland();
+    }, 380); // 380ms grace period stops flickering and jitter
+  });
+
+  pill.addEventListener("click", e => {
+    if (!isExpanded) {
+      expandIsland();
+    }
+    // Pin open when interacting with tabs, dock items, sliders or panels
+    if (e.target.closest("#tab-bar, .dock-item, .mac-slider, #calendar-panel, .view-panel")) {
+      isPinned = true;
     }
   });
 
@@ -1130,8 +1166,8 @@
 
   $("close").addEventListener("click", event => {
     event.stopPropagation();
-    pill.classList.remove("open");
-    window.island.interactive(false);
+    isPinned = false;
+    collapseIsland(true);
   });
 
   $("pp").onclick = e => { e.stopPropagation(); window.island.cmd("playpause"); };

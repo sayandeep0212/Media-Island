@@ -130,9 +130,13 @@ function getLocalIp() {
   return primary ? primary.address : "127.0.0.1";
 }
 
+let isExpanded = false;
+
 function place() {
+  if (!win || win.isDestroyed()) return;
   const { bounds } = screen.getPrimaryDisplay();
-  const w = 660, h = 260;
+  const w = isExpanded ? 646 : 260;
+  const h = isExpanded ? 248 : 46;
   win.setBounds({ x: Math.round(bounds.x + (bounds.width - w) / 2), y: bounds.y + 4, width: w, height: h });
 }
 
@@ -336,14 +340,13 @@ function updatePowerSave() {
 
     function createWindow() {
       win = new BrowserWindow({
-        width: 660, height: 260,
+        width: 260, height: 46,
         frame: false, transparent: true, resizable: false, hasShadow: false,
         alwaysOnTop: true, skipTaskbar: true, focusable: false,
         webPreferences: { preload: path.join(__dirname, "preload.js") }
       });
       win.setAlwaysOnTop(true, "screen-saver");
       win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-      win.setIgnoreMouseEvents(true, { forward: true });
       win.loadFile("index.html");
       win.webContents.on("did-finish-load", () => {
         win.webContents.send("accent-color", settings.accentColor);
@@ -616,9 +619,16 @@ function updatePowerSave() {
       return settings.timeFormat;
     });
 
+    ipcMain.on("set-expanded", (_e, expanded) => {
+      if (!win || win.isDestroyed()) return;
+      isExpanded = !!expanded;
+      place();
+    });
+
     ipcMain.on("interactive", (_e, on) => {
-      if (!win) return;
-      win.setIgnoreMouseEvents(!on, { forward: true });
+      if (!win || win.isDestroyed()) return;
+      // With physical window sizing, no forward hit-testing required
+      win.setIgnoreMouseEvents(false);
     });
 
     ipcMain.on("drag", (event, { phase, screenX, screenY }) => {

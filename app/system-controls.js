@@ -80,24 +80,35 @@ async function launchApp(target) {
   return !!(res && res.startsWith("LAUNCHED"));
 }
 
+async function getSpotifyStatus() {
+  const output = await runCore(["spotify"]);
+  if (!output) return { running: false, playing: false, title: "", artist: "" };
+  try {
+    return JSON.parse(output);
+  } catch {
+    return { running: false, playing: false, title: "", artist: "" };
+  }
+}
+
 function startWatcher(callbacks = {}) {
   if (watcherInterval) clearInterval(watcherInterval);
 
   let lastTrackStr = "";
 
+  // Query system status once at startup
+  getStatus().then(status => {
+    if (status && callbacks.onControls) {
+      callbacks.onControls({
+        volume: status.volume,
+        brightness: status.brightness
+      });
+    }
+  });
+
   const poll = async () => {
     try {
-      const status = await getStatus();
-      if (!status) return;
-
-      if (callbacks.onControls) {
-        callbacks.onControls({
-          volume: status.volume,
-          brightness: status.brightness
-        });
-      }
-
-      const sp = status.spotify;
+      // Lightweight Spotify check (0 WMI queries, <1ms)
+      const sp = await getSpotifyStatus();
       if (sp && sp.running) {
         const trackStr = `${sp.playing}:${sp.artist}:${sp.title}`;
         if (trackStr !== lastTrackStr) {
@@ -129,7 +140,7 @@ function startWatcher(callbacks = {}) {
   };
 
   poll();
-  watcherInterval = setInterval(poll, 1500);
+  watcherInterval = setInterval(poll, 2500);
 }
 
 function stopWatcher() {

@@ -179,7 +179,13 @@ namespace MediaIslandCore {
             }
 
             string cmd = args[0].ToLower();
-            if (cmd == "vol_get") {
+            if (cmd == "spotify") {
+                bool isRunning, isPlaying;
+                string t, a;
+                GetSpotifyStatus(out isRunning, out isPlaying, out t, out a);
+                Console.WriteLine("{\"running\":" + (isRunning ? "true" : "false") + ",\"playing\":" + (isPlaying ? "true" : "false") + ",\"title\":\"" + EscapeJson(t) + "\",\"artist\":\"" + EscapeJson(a) + "\"}");
+                return;
+            } else if (cmd == "vol_get") {
                 Console.WriteLine(GetVolume());
             } else if (cmd == "vol_set" && args.Length > 1) {
                 int v;
