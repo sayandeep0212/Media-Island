@@ -969,8 +969,12 @@
       item.style.backgroundColor = app.bg || "#2c2c2e";
       item.title = app.name;
 
-      const svgContent = APP_SVGS[app.icon] || APP_SVGS.settings;
-      item.innerHTML = svgContent;
+      if (app.iconDataUrl) {
+        item.innerHTML = `<img src="${app.iconDataUrl}" style="width: 22px; height: 22px; border-radius: 5px; object-fit: contain; pointer-events: none;" alt="${app.name}">`;
+      } else {
+        const svgContent = APP_SVGS[app.icon] || APP_SVGS.settings;
+        item.innerHTML = svgContent;
+      }
 
       const tip = document.createElement("span");
       tip.className = "dock-tooltip";
@@ -984,6 +988,32 @@
 
       dock.appendChild(item);
     });
+
+    // '+' Add Desktop App button
+    const addBtn = document.createElement("div");
+    addBtn.className = "dock-item add-dock-btn";
+    addBtn.style.backgroundColor = "rgba(255, 255, 255, 0.08)";
+    addBtn.style.border = "1px dashed rgba(255, 255, 255, 0.25)";
+    addBtn.title = "Add App from Desktop";
+    addBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+    const addTip = document.createElement("span");
+    addTip.className = "dock-tooltip";
+    addTip.textContent = "+ Add App";
+    addBtn.appendChild(addTip);
+
+    addBtn.addEventListener("click", async e => {
+      e.stopPropagation();
+      if (window.island.pickAppFile) {
+        const picked = await window.island.pickAppFile();
+        if (picked) {
+          const current = await window.island.getPinnedApps();
+          const baseList = Array.isArray(current) && current.length > 0 ? current : DEFAULT_PINNED_APPS;
+          const updated = [...baseList, picked];
+          await window.island.savePinnedApps(updated);
+        }
+      }
+    });
+    dock.appendChild(addBtn);
   }
 
   if (window.island.getPinnedApps) {

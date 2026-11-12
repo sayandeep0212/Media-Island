@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, powerMonitor, powerSaveBlocker, screen, Tray } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, powerMonitor, powerSaveBlocker, screen, shell, Tray } = require("electron");
 const fs = require("fs");
 const path = require("path");
 const http = require("http");
@@ -404,7 +404,7 @@ function updatePowerSave() {
         });
         return;
       } else if (cmd === "launchApp") {
-        systemControls.launchApp(value);
+        launchAppTarget(value);
         return;
       }
 
@@ -595,8 +595,93 @@ function updatePowerSave() {
       broadcastCommand("setBrightness", val);
       return val;
     });
+    function launchAppTarget(target) {
+      if (!target || typeof target !== "string") return;
+      const trimmed = target.trim();
+      if (trimmed.toLowerCase().endsWith(".lnk") || fs.existsSync(trimmed)) {
+        shell.openPath(trimmed).catch(() => {
+          systemControls.launchApp(trimmed);
+        });
+      } else {
+        systemControls.launchApp(trimmed);
+      }
+    }
+
+    async function getDesktopShortcuts() {
+      const dirs = [];
+      try { dirs.push(app.getPath("desktop")); } catch {}
+      try { dirs.push("C:\\Users\\Public\\Desktop"); } catch {}
+      
+      const found = [];
+      const seen = new Set();
+
+      for (const dir of dirs) {
+        if (!fs.existsSync(dir)) continue;
+        try {
+          const files = fs.readdirSync(dir);
+          for (const file of files) {
+            const ext = path.extname(file).toLowerCase();
+            if (ext === ".lnk" || ext === ".url") {
+              const fullPath = path.join(dir, file);
+              const name = path.parse(file).name;
+              if (seen.has(name.toLowerCase())) continue;
+              seen.add(name.toLowerCase());
+
+              let iconDataUrl = "";
+              try {
+                const img = await app.getFileIcon(fullPath, { size: "normal" });
+                iconDataUrl = img.toDataURL();
+              } catch {}
+
+              found.push({
+                id: "desktop-" + name.toLowerCase().replace(/[^a-z0-9]/g, "-"),
+                name: name,
+                target: fullPath,
+                icon: "custom",
+                iconDataUrl: iconDataUrl,
+                bg: "#242429"
+              });
+            }
+          }
+        } catch {}
+      }
+      return found;
+    }
+
     ipcMain.handle("system:launchApp", (_e, target) => {
-      systemControls.launchApp(target);
+      launchAppTarget(target);
+    });
+    ipcMain.handle("settings:pickAppFile", async () => {
+      const ownerWin = settingsWin || win;
+      const result = await dialog.showOpenDialog(ownerWin, {
+        title: "Select Any App or Shortcut from your Desktop to Pin",
+        defaultPath: app.getPath("desktop"),
+        filters: [
+          { name: "Desktop Apps & Shortcuts (*.lnk;*.exe;*.url)", extensions: ["lnk", "exe", "url"] },
+          { name: "All Files (*.*)", extensions: ["*"] }
+        ],
+        properties: ["openFile"]
+      });
+      if (result.canceled || !result.filePaths || !result.filePaths.length) return null;
+      const filePath = result.filePaths[0];
+      const name = path.parse(filePath).name;
+      let iconDataUrl = "";
+      try {
+        const img = await app.getFileIcon(filePath, { size: "normal" });
+        iconDataUrl = img.toDataURL();
+      } catch {}
+
+      return {
+        id: "app-" + Date.now(),
+        name: name,
+        target: filePath,
+        icon: "custom",
+        iconDataUrl: iconDataUrl,
+        bg: "#242429"
+      };
+    });
+    ipcMain.handle("settings:getDesktopShortcuts", async () => {
+      return await getDesktopShortcuts();
     });
     ipcMain.handle("settings:getPinnedApps", () => settings.pinnedApps);
     ipcMain.handle("settings:savePinnedApps", (_e, apps) => {

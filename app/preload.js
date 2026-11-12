@@ -29,6 +29,8 @@ contextBridge.exposeInMainWorld("island", {
   launchApp: target => ipcRenderer.invoke("system:launchApp", target),
   getPinnedApps: () => ipcRenderer.invoke("settings:getPinnedApps"),
   savePinnedApps: apps => ipcRenderer.invoke("settings:savePinnedApps", apps),
+  pickAppFile: () => ipcRenderer.invoke("settings:pickAppFile"),
+  getDesktopShortcuts: () => ipcRenderer.invoke("settings:getDesktopShortcuts"),
   onPinnedApps: cb => ipcRenderer.on("pinned-apps", (_e, apps) => cb(apps)),
   getTimeFormat: () => ipcRenderer.invoke("settings:getTimeFormat"),
   setTimeFormat: fmt => ipcRenderer.invoke("settings:setTimeFormat", fmt),

@@ -601,14 +601,35 @@
 
     <div class="card">
       <div class="card-title">Pinned Apps Dock (macOS Style)</div>
-      <div class="card-desc">Customize apps pinned to the Media Island dock. Click "Test" to verify launch or change targets.</div>
+      <div class="card-desc">No need to type links or commands! Pick any app from your Desktop or choose from apps detected below.</div>
 
+      <!-- Quick Add from Desktop Button -->
+      <div style="display: flex; gap: 10px; margin-bottom: 16px;">
+        <button id="pickAppBtn" class="btn" style="background: var(--accent); color: #000; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: auto; padding: 10px 18px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          ➕ Pick Any App from Desktop
+        </button>
+      </div>
+
+      <!-- Detected Desktop Apps Section -->
+      <div id="detectedAppsSection" style="margin-bottom: 18px; display: none;">
+        <div style="font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 8px;">
+          🖥️ Found on Your Desktop (Click to Pin):
+        </div>
+        <div id="detectedAppsGrid" style="display: flex; flex-wrap: wrap; gap: 8px;">
+          <!-- Populated from desktop scan -->
+        </div>
+      </div>
+
+      <div style="font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">
+        📌 Currently Pinned Apps in Dock:
+      </div>
       <div id="pinnedAppsList" class="apps-list">
         <!-- Rendered dynamically -->
       </div>
 
       <div style="display: flex; gap: 10px; margin-top: 14px;">
-        <button id="saveAppsBtn" class="btn" style="flex: 1;">Save Pinned Apps</button>
+        <button id="saveAppsBtn" class="btn" style="flex: 1;">Save Changes</button>
         <button id="resetAppsBtn" class="btn" style="background: var(--surface-hover); color: var(--text);">Reset Defaults</button>
       </div>
       <div id="appsSaveStatus" style="font-size: 12px; margin-top: 8px;"></div>
@@ -876,39 +897,118 @@
     function renderAppsManager(apps) {
       currentPinnedApps = Array.isArray(apps) && apps.length > 0 ? JSON.parse(JSON.stringify(apps)) : DEFAULT_APPS;
       pinnedAppsList.innerHTML = "";
-      currentPinnedApps.forEach((app) => {
+      currentPinnedApps.forEach((app, idx) => {
         const row = document.createElement("div");
         row.className = "app-item-card";
 
+        // Real App Icon preview
+        const iconWrap = document.createElement("div");
+        iconWrap.style.width = "28px";
+        iconWrap.style.height = "28px";
+        iconWrap.style.borderRadius = "7px";
+        iconWrap.style.backgroundColor = app.bg || "#2c2c2e";
+        iconWrap.style.display = "grid";
+        iconWrap.style.placeItems = "center";
+        iconWrap.style.flex = "none";
+        if (app.iconDataUrl) {
+          iconWrap.innerHTML = `<img src="${app.iconDataUrl}" style="width: 20px; height: 20px; object-fit: contain;">`;
+        } else {
+          iconWrap.innerHTML = `<span style="font-size: 13px;">${app.name.charAt(0)}</span>`;
+        }
+
         const nameLabel = document.createElement("div");
         nameLabel.className = "app-item-name";
-        nameLabel.textContent = app.name;
-
-        const targetInput = document.createElement("input");
-        targetInput.type = "text";
-        targetInput.className = "app-item-target";
-        targetInput.value = app.target || "";
-        targetInput.title = "Executable command or protocol link";
-        targetInput.addEventListener("input", e => {
-          app.target = e.target.value.trim();
-        });
+        nameLabel.style.width = "auto";
+        nameLabel.style.flex = "1";
+        nameLabel.innerHTML = `<strong>${app.name}</strong><div style="font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px;">${app.target || ""}</div>`;
 
         const testBtn = document.createElement("button");
         testBtn.className = "app-test-btn";
-        testBtn.textContent = "Launch";
+        testBtn.textContent = "▶ Launch";
         testBtn.addEventListener("click", () => {
-          if (window.island.launchApp) window.island.launchApp(targetInput.value.trim());
+          if (window.island.launchApp) window.island.launchApp(app.target);
         });
 
+        const delBtn = document.createElement("button");
+        delBtn.className = "app-del-btn";
+        delBtn.textContent = "✕";
+        delBtn.title = "Remove from Island";
+        delBtn.addEventListener("click", () => {
+          currentPinnedApps.splice(idx, 1);
+          renderAppsManager(currentPinnedApps);
+          if (window.island.savePinnedApps) window.island.savePinnedApps(currentPinnedApps);
+        });
+
+        row.appendChild(iconWrap);
         row.appendChild(nameLabel);
-        row.appendChild(targetInput);
         row.appendChild(testBtn);
+        row.appendChild(delBtn);
         pinnedAppsList.appendChild(row);
       });
     }
 
     if (window.island.getPinnedApps) {
       window.island.getPinnedApps().then(renderAppsManager);
+    }
+
+    // Pick Any App from Desktop Dialog
+    const pickAppBtn = $("pickAppBtn");
+    if (pickAppBtn) {
+      pickAppBtn.addEventListener("click", async () => {
+        if (window.island.pickAppFile) {
+          const picked = await window.island.pickAppFile();
+          if (picked) {
+            currentPinnedApps.push(picked);
+            renderAppsManager(currentPinnedApps);
+            if (window.island.savePinnedApps) {
+              window.island.savePinnedApps(currentPinnedApps);
+            }
+            appsSaveStatus.style.color = "#34c759";
+            appsSaveStatus.textContent = `✓ Added "${picked.name}" from your Desktop!`;
+            setTimeout(() => { appsSaveStatus.textContent = ""; }, 3500);
+          }
+        }
+      });
+    }
+
+    // Auto-detect and populate desktop shortcuts
+    if (window.island.getDesktopShortcuts) {
+      window.island.getDesktopShortcuts().then(shortcuts => {
+        if (Array.isArray(shortcuts) && shortcuts.length > 0) {
+          const section = $("detectedAppsSection");
+          const grid = $("detectedAppsGrid");
+          section.style.display = "block";
+          grid.innerHTML = "";
+
+          shortcuts.forEach(sc => {
+            const chip = document.createElement("button");
+            chip.style.cssText = "display: flex; align-items: center; gap: 6px; padding: 6px 10px; background: rgba(255,255,255,0.06); border: 1px solid var(--border); border-radius: 8px; color: var(--text); cursor: pointer; font-size: 12px; transition: all 0.2s ease;";
+            if (sc.iconDataUrl) {
+              chip.innerHTML = `<img src="${sc.iconDataUrl}" style="width: 16px; height: 16px; object-fit: contain;"> <span>${sc.name}</span> <span style="color: var(--accent); font-weight: 700;">+</span>`;
+            } else {
+              chip.innerHTML = `<span>${sc.name}</span> <span style="color: var(--accent); font-weight: 700;">+</span>`;
+            }
+
+            chip.addEventListener("click", () => {
+              const exists = currentPinnedApps.some(a => a.name.toLowerCase() === sc.name.toLowerCase() || a.target === sc.target);
+              if (!exists) {
+                currentPinnedApps.push(sc);
+                renderAppsManager(currentPinnedApps);
+                if (window.island.savePinnedApps) window.island.savePinnedApps(currentPinnedApps);
+                appsSaveStatus.style.color = "#34c759";
+                appsSaveStatus.textContent = `✓ Pinned "${sc.name}"!`;
+                setTimeout(() => { appsSaveStatus.textContent = ""; }, 3000);
+              } else {
+                appsSaveStatus.style.color = "#ff9500";
+                appsSaveStatus.textContent = `"${sc.name}" is already pinned.`;
+                setTimeout(() => { appsSaveStatus.textContent = ""; }, 2500);
+              }
+            });
+
+            grid.appendChild(chip);
+          });
+        }
+      });
     }
 
     if (saveAppsBtn) {
