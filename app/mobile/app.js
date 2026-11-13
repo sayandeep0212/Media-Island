@@ -53,6 +53,12 @@
   const applyCustomColorBtn = $("applyCustomColorBtn");
   const colorPresets = $("colorPresets");
 
+  // Hero Artwork Elements
+  const heroArtImg = $("heroArtImg");
+  const heroArtReflection = $("heroArtReflection");
+  const quickVolSlider = $("quickVolSlider");
+  const quickVolVal = $("quickVolVal");
+
   // Dynamic Island Stickers Studio Elements
   const mobileStickerBox = $("mobileStickerBox");
   const mobileStickerGrid = $("mobileStickerGrid");
@@ -160,6 +166,11 @@
       sourceIcon.style.display = "none";
       sourceFallback.style.display = "none";
       artWrap.style.backgroundImage = "none";
+      if (heroArtImg) {
+        heroArtImg.style.backgroundImage = "none";
+        heroArtImg.innerHTML = '<div class="hero-art-placeholder"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><circle cx="12" cy="10" r="3"/><path d="m6 17 3-3 2 2 4-4 3 3"/></svg></div>';
+      }
+      if (heroArtReflection) heroArtReflection.style.backgroundImage = "none";
       artWrap.classList.remove("playing");
       wave.classList.remove("playing");
       playPauseBtn.innerHTML = ICON_PLAY;
@@ -191,8 +202,21 @@
     // Artwork
     if (state.art) {
       artWrap.style.backgroundImage = `url("${state.art}")`;
+      if (heroArtImg) {
+        heroArtImg.style.backgroundImage = `url("${state.art}")`;
+        heroArtImg.innerHTML = "";
+      }
+      if (heroArtReflection) {
+        heroArtReflection.style.backgroundImage = `url("${state.art}")`;
+        heroArtReflection.style.backgroundSize = "cover";
+      }
     } else {
       artWrap.style.backgroundImage = "none";
+      if (heroArtImg) {
+        heroArtImg.style.backgroundImage = "none";
+        heroArtImg.innerHTML = '<div class="hero-art-placeholder"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><circle cx="12" cy="10" r="3"/><path d="m6 17 3-3 2 2 4-4 3 3"/></svg></div>';
+      }
+      if (heroArtReflection) heroArtReflection.style.backgroundImage = "none";
     }
 
     // Playing state
@@ -535,12 +559,39 @@
     mobileVolSlider.addEventListener("input", e => {
       const val = Number(e.target.value);
       if (mobileVolVal) mobileVolVal.textContent = `${val}%`;
+      if (quickVolVal) quickVolVal.textContent = `${val}%`;
+      if (quickVolSlider) quickVolSlider.value = val;
     });
     mobileVolSlider.addEventListener("change", e => {
       const val = Number(e.target.value);
       sendCommand("setVolume", val);
     });
   }
+
+  if (quickVolSlider) {
+    quickVolSlider.addEventListener("input", e => {
+      const val = Number(e.target.value);
+      if (quickVolVal) quickVolVal.textContent = `${val}%`;
+      if (mobileVolVal) mobileVolVal.textContent = `${val}%`;
+      if (mobileVolSlider) mobileVolSlider.value = val;
+    });
+    quickVolSlider.addEventListener("change", e => {
+      const val = Number(e.target.value);
+      sendCommand("setVolume", val);
+    });
+  }
+
+  // Segmented Navigation Tabs
+  const tabBtns = document.querySelectorAll(".remote-tab-btn");
+  const tabPanes = document.querySelectorAll(".remote-tab-pane");
+  tabBtns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const tab = btn.dataset.tab;
+      tabBtns.forEach(b => b.classList.toggle("active", b === btn));
+      tabPanes.forEach(p => p.classList.toggle("active", p.id === `tab-${tab}`));
+      vibrate(15);
+    });
+  });
 
   if (mobileAppsGrid) {
     mobileAppsGrid.addEventListener("click", e => {
@@ -686,9 +737,15 @@
         controlsRef.on("value", snapshot => {
           const ctrls = snapshot.val();
           if (!ctrls) return;
-          if (ctrls.volume != null && mobileVolSlider && !mobileVolSlider.matches(":active")) {
-            mobileVolSlider.value = ctrls.volume;
-            if (mobileVolVal) mobileVolVal.textContent = `${ctrls.volume}%`;
+          if (ctrls.volume != null) {
+            if (mobileVolSlider && !mobileVolSlider.matches(":active")) {
+              mobileVolSlider.value = ctrls.volume;
+              if (mobileVolVal) mobileVolVal.textContent = `${ctrls.volume}%`;
+            }
+            if (quickVolSlider && !quickVolSlider.matches(":active")) {
+              quickVolSlider.value = ctrls.volume;
+              if (quickVolVal) quickVolVal.textContent = `${ctrls.volume}%`;
+            }
           }
           if (ctrls.brightness != null && mobileBrightSlider && !mobileBrightSlider.matches(":active")) {
             mobileBrightSlider.value = ctrls.brightness;
