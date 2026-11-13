@@ -351,6 +351,9 @@ function updatePowerSave() {
       win.webContents.on("did-finish-load", () => {
         win.webContents.send("accent-color", settings.accentColor);
         win.webContents.send("pinned-apps", settings.pinnedApps);
+        if (settings.currentSticker && settings.currentSticker !== "auto") {
+          win.webContents.send("select-sticker", settings.currentSticker);
+        }
         systemControls.getStatus().then(status => {
           if (win && !win.isDestroyed()) win.webContents.send("system-controls", status);
         });

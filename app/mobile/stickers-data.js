@@ -1,7 +1,7 @@
 /**
  * stickers-data.js
- * Vibrant, glossy, high-contrast MacBook Dynamic Island stickers
- * Synced with desktop island pack.
+ * Exported sticker pack data for the Mobile Web Remote.
+ * Contains all 11 vibrant vector stickers matching desktop Media Island.
  */
 window.ISLAND_STICKERS = [
   {
