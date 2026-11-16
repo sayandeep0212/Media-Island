@@ -6,7 +6,7 @@
   :root {
     --accent: #ff8a3d;
     --mac-blue: #007aff;
-    --bg-surface: rgba(16, 16, 20, 0.94);
+    --bg-surface: #000000;
     --border-subtle: rgba(255, 255, 255, 0.12);
     --border-hover: rgba(255, 255, 255, 0.22);
     --text-main: #f5f5f7;
@@ -40,7 +40,7 @@
     height: 42px;
     box-sizing: border-box;
     background: #000000;
-    border: 1px solid rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 999px;
     display: flex;
     align-items: center;
@@ -50,12 +50,12 @@
     opacity: 1;
     transform-origin: top center;
     cursor: grab;
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.4);
-    transition: width 0.38s cubic-bezier(0.25, 1.25, 0.4, 1),
-                height 0.38s cubic-bezier(0.25, 1.25, 0.4, 1),
-                border-radius 0.38s ease,
-                padding 0.35s ease,
-                background 0.35s ease;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+    will-change: width, height, border-radius;
+    transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                height 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                border-radius 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                padding 0.28s ease;
   }
 
   #pill.dragging { cursor: grabbing; }
@@ -64,14 +64,13 @@
   #pill.open {
     width: 636px;
     height: 242px;
-    border-radius: 34px;
-    padding: 12px 18px 10px 18px;
+    border-radius: 48px;
+    padding: 14px 22px 12px 22px;
     flex-direction: column;
     align-items: stretch;
-    background: var(--bg-surface);
-    backdrop-filter: blur(28px);
-    -webkit-backdrop-filter: blur(28px);
-    border: 1px solid var(--border-subtle);
+    background: #000000;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.08);
   }
 
   /* Topline / Collapsed Header */
@@ -95,12 +94,18 @@
     width: 30px;
     height: 30px;
     border-radius: 9px;
-    background: #1c1c1e center/cover no-repeat;
+    background: #18181c url("icon.png") center/cover no-repeat;
     flex: none;
-    transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     display: flex;
     align-items: center;
     justify-content: center;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+  }
+
+  #pill.open #art {
+    margin-right: 8px;
   }
 
   #source-badge {
@@ -111,7 +116,7 @@
     height: 16px;
     box-sizing: border-box;
     overflow: hidden;
-    display: grid;
+    display: none;
     place-items: center;
     border: 2px solid #000;
     border-radius: 50%;
@@ -312,12 +317,13 @@
   #panel-art {
     width: 52px;
     height: 52px;
-    border-radius: 12px;
-    background: #242429 center/cover no-repeat;
+    border-radius: 14px;
+    background: #18181c url("icon.png") center/cover no-repeat;
     flex: none;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
     position: relative;
     border: 1px solid rgba(255, 255, 255, 0.1);
+    overflow: hidden;
   }
 
   .media-meta {
@@ -1048,6 +1054,18 @@
     });
   }
 
+  // --- Artwork & App Logo Management ---
+  const DEFAULT_APP_LOGO = 'url("icon.png")';
+
+  function setDefaultArt() {
+    $("art").style.backgroundImage = DEFAULT_APP_LOGO;
+    $("panel-art").style.backgroundImage = DEFAULT_APP_LOGO;
+    $("source-badge").style.display = "none";
+  }
+
+  // Set default app logo on launch
+  setDefaultArt();
+
   // --- Media State Listener ---
   window.island.onState(s => {
     if (!s || s.type === "none") {
@@ -1055,7 +1073,7 @@
       currentTrack = "";
       $("panel-title").textContent = "No track playing";
       $("panel-artist").textContent = "Play from Spotify, Chrome or any media app";
-      $("panel-art").style.backgroundImage = "none";
+      setDefaultArt();
       updateLiveClock();
       return;
     }
@@ -1082,8 +1100,8 @@
     $("panel-title").textContent = titleText;
     $("panel-artist").textContent = artistText;
 
-    // Artwork
-    const artUrl = s.art ? `url("${s.art}")` : "none";
+    // Artwork - use track art if provided, else original app logo
+    const artUrl = (s.art && s.art.trim()) ? `url("${s.art}")` : DEFAULT_APP_LOGO;
     $("art").style.backgroundImage = artUrl;
     $("panel-art").style.backgroundImage = artUrl;
 
@@ -1093,12 +1111,17 @@
     $("source-badge").title = sourceName;
     $("source-fallback").textContent = sourceName.charAt(0) || "M";
 
-    if ($("source-icon").dataset.sourceIcon !== sourceIcon) {
-      $("source-icon").dataset.sourceIcon = sourceIcon;
-      $("source-icon").style.display = sourceIcon ? "block" : "none";
-      $("source-fallback").style.display = sourceIcon ? "none" : "block";
-      if (sourceIcon) $("source-icon").src = sourceIcon;
-      else $("source-icon").removeAttribute("src");
+    if (sourceIcon || sourceName) {
+      $("source-badge").style.display = "grid";
+      if ($("source-icon").dataset.sourceIcon !== sourceIcon) {
+        $("source-icon").dataset.sourceIcon = sourceIcon;
+        $("source-icon").style.display = sourceIcon ? "block" : "none";
+        $("source-fallback").style.display = sourceIcon ? "none" : "block";
+        if (sourceIcon) $("source-icon").src = sourceIcon;
+        else $("source-icon").removeAttribute("src");
+      }
+    } else {
+      $("source-badge").style.display = "none";
     }
 
     // Seekbar
@@ -1135,7 +1158,7 @@
       if (!isExpanded) {
         window.island.setExpanded(false);
       }
-    }, 280);
+    }, 300);
   }
 
   pill.addEventListener("mouseenter", () => {
@@ -1148,7 +1171,7 @@
     clearTimeout(leaveTimer);
     leaveTimer = setTimeout(() => {
       collapseIsland();
-    }, 380); // 380ms grace period stops flickering and jitter
+    }, 240);
   });
 
   pill.addEventListener("click", e => {

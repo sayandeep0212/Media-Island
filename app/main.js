@@ -135,8 +135,8 @@ let isExpanded = false;
 function place() {
   if (!win || win.isDestroyed()) return;
   const { bounds } = screen.getPrimaryDisplay();
-  const w = isExpanded ? 646 : 260;
-  const h = isExpanded ? 248 : 46;
+  const w = isExpanded ? 656 : 266;
+  const h = isExpanded ? 254 : 48;
   win.setBounds({ x: Math.round(bounds.x + (bounds.width - w) / 2), y: bounds.y + 4, width: w, height: h });
 }
 
@@ -340,7 +340,7 @@ function updatePowerSave() {
 
     function createWindow() {
       win = new BrowserWindow({
-        width: 260, height: 46,
+        width: 266, height: 48,
         frame: false, transparent: true, resizable: false, hasShadow: false,
         alwaysOnTop: true, skipTaskbar: true, focusable: false,
         webPreferences: { preload: path.join(__dirname, "preload.js") }
