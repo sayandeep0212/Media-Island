@@ -98,7 +98,8 @@ let settings = {
     { id: "terminal", name: "Terminal", icon: "terminal", target: "powershell.exe" },
     { id: "calc", name: "Calculator", icon: "calculator", target: "calc.exe" },
     { id: "settings", name: "Settings", icon: "settings", target: "ms-settings:" }
-  ]
+  ],
+  customPosition: null
 };
 let dragOffset;
 let currentRemoteStatus = { status: "not_configured", message: "Connecting to Firebase..." };
@@ -134,16 +135,34 @@ let isExpanded = false;
 
 function place() {
   if (!win || win.isDestroyed()) return;
-  const { bounds } = screen.getPrimaryDisplay();
   const w = isExpanded ? 656 : 266;
   const h = isExpanded ? 254 : 48;
-  win.setBounds({ x: Math.round(bounds.x + (bounds.width - w) / 2), y: bounds.y + 4, width: w, height: h });
+
+  if (settings.customPosition && typeof settings.customPosition.centerX === "number" && typeof settings.customPosition.y === "number") {
+    const display = screen.getDisplayNearestPoint({ x: settings.customPosition.centerX, y: settings.customPosition.y })
+      || screen.getPrimaryDisplay();
+    const { x, y, width, height } = display.workArea;
+
+    let targetX = Math.round(settings.customPosition.centerX - w / 2);
+    targetX = Math.max(x, Math.min(x + width - w, targetX));
+
+    let targetY = Math.round(settings.customPosition.y);
+    targetY = Math.max(y, Math.min(y + height - h, targetY));
+
+    win.setBounds({ x: targetX, y: targetY, width: w, height: h });
+  } else {
+    const { bounds } = screen.getPrimaryDisplay();
+    win.setBounds({ x: Math.round(bounds.x + (bounds.width - w) / 2), y: bounds.y + 4, width: w, height: h });
+  }
 }
 
 function loadSettings() {
   const file = path.join(app.getPath("userData"), "settings.json");
   try {
     const saved = JSON.parse(fs.readFileSync(file, "utf8"));
+    if (saved.customPosition && typeof saved.customPosition.centerX === "number" && typeof saved.customPosition.y === "number") {
+      settings.customPosition = saved.customPosition;
+    }
     if (typeof saved.accentColor === "string" && /^#[0-9a-f]{6}$/i.test(saved.accentColor)) {
       settings.accentColor = saved.accentColor;
     }
@@ -201,10 +220,20 @@ function trayIcon() {
   return nativeImage.createFromDataURL(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`);
 }
 
-function createTray() {
-  tray = new Tray(trayIcon());
-  tray.setToolTip("Media Island");
+function updateTrayMenu() {
+  if (!tray) return;
+  const isIslandVisible = win && !win.isDestroyed() && win.isVisible();
   tray.setContextMenu(Menu.buildFromTemplate([
+    {
+      label: isIslandVisible ? "Turn Off Media Island" : "Turn On Media Island",
+      click: () => toggleIsland()
+    },
+    {
+      label: "Reset Island to Top Center",
+      enabled: !!settings.customPosition,
+      click: () => resetIslandPosition()
+    },
+    { type: "separator" },
     { label: "Settings & Mobile Remote", click: () => openSettings() },
     { type: "separator" },
     {
@@ -222,6 +251,35 @@ function createTray() {
     { type: "separator" },
     { label: "Quit Media Island", click: () => app.quit() }
   ]));
+}
+
+function toggleIsland() {
+  if (!win || win.isDestroyed()) return;
+  if (win.isVisible()) {
+    win.hide();
+  } else {
+    win.showInactive();
+    place();
+  }
+  updateTrayMenu();
+}
+
+function resetIslandPosition() {
+  settings.customPosition = null;
+  saveSettings();
+  place();
+  updateTrayMenu();
+}
+
+function createTray() {
+  if (tray) {
+    updateTrayMenu();
+    return;
+  }
+  tray = new Tray(trayIcon());
+  tray.setToolTip("Media Island");
+  updateTrayMenu();
+  tray.on("click", () => toggleIsland());
   tray.on("double-click", () => openSettings());
 }
 
@@ -732,7 +790,33 @@ function updatePowerSave() {
         win.setPosition(Math.round(nextX), Math.round(nextY));
       } else if (phase === "end") {
         dragOffset = null;
+        const currentBounds = win.getBounds();
+        const primary = screen.getPrimaryDisplay();
+        const primaryCenterX = primary.bounds.x + primary.bounds.width / 2;
+        const currentCenterX = currentBounds.x + currentBounds.width / 2;
+
+        // If dragged within 20px of top and near center, snap back to default notch
+        const isNearTopCenter = (currentBounds.y <= primary.bounds.y + 16) && Math.abs(currentCenterX - primaryCenterX) < 60;
+        if (isNearTopCenter) {
+          settings.customPosition = null;
+          saveSettings();
+          place();
+        } else {
+          settings.customPosition = {
+            centerX: Math.round(currentCenterX),
+            y: Math.round(currentBounds.y)
+          };
+          saveSettings();
+        }
+        updateTrayMenu();
       }
+    });
+
+    ipcMain.on("island:close", () => {
+      if (win && !win.isDestroyed()) {
+        win.hide();
+      }
+      updateTrayMenu();
     });
 
     ipcMain.handle("settings:getAccentColor", () => settings.accentColor);

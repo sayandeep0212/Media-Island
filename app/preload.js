@@ -35,5 +35,6 @@ contextBridge.exposeInMainWorld("island", {
   getTimeFormat: () => ipcRenderer.invoke("settings:getTimeFormat"),
   setTimeFormat: fmt => ipcRenderer.invoke("settings:setTimeFormat", fmt),
   onTimeFormat: cb => ipcRenderer.on("time-format", (_e, fmt) => cb(fmt)),
-  onSystemControls: cb => ipcRenderer.on("system-controls", (_e, data) => cb(data))
+  onSystemControls: cb => ipcRenderer.on("system-controls", (_e, data) => cb(data)),
+  closeIsland: () => ipcRenderer.send("island:close")
 });
