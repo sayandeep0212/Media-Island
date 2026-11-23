@@ -441,16 +441,10 @@ function updatePowerSave() {
       settingsWin.on("closed", () => { settingsWin = null; });
     }
 
+    let lastMediaCmdTime = 0;
+
     function broadcastCommand(cmd, value = null) {
-      if (cmd === "playpause" || cmd === "toggle") {
-        systemControls.sendMediaKey("playpause");
-      } else if (cmd === "next") {
-        systemControls.sendMediaKey("next");
-      } else if (cmd === "prev" || cmd === "previous") {
-        systemControls.sendMediaKey("prev");
-      } else if (cmd === "stop") {
-        systemControls.sendMediaKey("stop");
-      } else if (cmd === "setVolume") {
+      if (cmd === "setVolume") {
         systemControls.setVolume(value).then(vol => {
           if (win && !win.isDestroyed()) win.webContents.send("system-controls", { volume: vol });
           if (settingsWin && !settingsWin.isDestroyed()) settingsWin.webContents.send("system-controls", { volume: vol });
@@ -466,6 +460,54 @@ function updatePowerSave() {
         return;
       } else if (cmd === "launchApp") {
         launchAppTarget(value);
+        return;
+      }
+
+      const isMediaCmd = (cmd === "playpause" || cmd === "toggle" || cmd === "next" || cmd === "prev" || cmd === "previous" || cmd === "stop" || cmd === "seek");
+
+      if (isMediaCmd) {
+        const now = Date.now();
+        // Prevent duplicate command race condition within 250ms
+        if ((cmd === "playpause" || cmd === "toggle") && now - lastMediaCmdTime < 250) {
+          return;
+        }
+        if (cmd === "playpause" || cmd === "toggle") {
+          lastMediaCmdTime = now;
+        }
+
+        // Check if media is currently being reported by a browser extension (YouTube, web player, etc.)
+        const isExtensionMedia = !!(lastMediaState && lastMediaState.source && lastMediaState.source !== "spotify" && lastMediaState.type !== "none");
+
+        let sentToExtension = false;
+        const payload = JSON.stringify({ type: "cmd", cmd, value });
+
+        for (const c of clients) {
+          if (c.readyState === 1 && c.isExtension) {
+            c.send(payload);
+            sentToExtension = true;
+          }
+        }
+
+        // If media is NOT actively handled by the browser extension,
+        // use native Windows media keys to control Spotify Desktop / system media players
+        if (!sentToExtension || !isExtensionMedia) {
+          if (cmd === "playpause" || cmd === "toggle") {
+            systemControls.sendMediaKey("playpause");
+          } else if (cmd === "next") {
+            systemControls.sendMediaKey("next");
+          } else if (cmd === "prev" || cmd === "previous") {
+            systemControls.sendMediaKey("prev");
+          } else if (cmd === "stop") {
+            systemControls.sendMediaKey("stop");
+          }
+        }
+
+        // Forward command to any other non-extension clients (e.g. mobile remotes)
+        for (const c of clients) {
+          if (c.readyState === 1 && !c.isExtension) {
+            c.send(payload);
+          }
+        }
         return;
       }
 
@@ -592,6 +634,7 @@ function updatePowerSave() {
             }
 
             // State update from Chrome extension
+            ws.isExtension = true;
             lastMediaState = m;
             if (win && !win.isDestroyed()) win.webContents.send("state", m);
             if (glowWin && !glowWin.isDestroyed() && glowWin.isVisible()) glowWin.webContents.send("state", m);

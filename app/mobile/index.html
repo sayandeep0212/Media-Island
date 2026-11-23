@@ -306,8 +306,32 @@
           </button>
         </div>
 
+        <!-- Search & Filter Controls -->
+        <div class="sticker-search-bar">
+          <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" id="stickerSearchInput" placeholder="Search stickers (e.g. cat, coffee, flame, nori)..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+          <button id="stickerSearchClear" class="search-clear-btn" aria-label="Clear search" style="display: none;">✕</button>
+        </div>
+
+        <!-- Category Filter Pills -->
+        <div class="sticker-category-pills" id="stickerCategoryPills">
+          <button class="category-pill active" data-category="all">All <span class="pill-count">81</span></button>
+          <button class="category-pill" data-category="characters">Characters <span class="pill-count">16</span></button>
+          <button class="category-pill" data-category="mascots">Mascots <span class="pill-count">24</span></button>
+          <button class="category-pill" data-category="symbols">Symbols <span class="pill-count">24</span></button>
+          <button class="category-pill" data-category="chrome">Chrome <span class="pill-count">8</span></button>
+          <button class="category-pill" data-category="founders">Founders <span class="pill-count">9</span></button>
+        </div>
+
+        <div class="sticker-status-row">
+          <span id="stickerCountBadge" class="sticker-count-badge">Showing 81 stickers</span>
+        </div>
+
         <!-- Stickers Grid (Dynamically populated from stickers-data.js) -->
         <div class="stickers-grid" id="mobileStickerGrid"></div>
+        <div id="noStickersFound" class="no-stickers-msg" style="display: none;">
+          <p>No stickers matching your search.</p>
+        </div>
       </div>
     </section>
 

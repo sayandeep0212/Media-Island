@@ -10,8 +10,8 @@ if (coreExe.includes("app.asar")) {
     coreExe = unpackedPath;
   } else {
     try {
-      const tempExe = path.join(os.tmpdir(), "MediaIslandCore_v130.exe");
-      if (!fs.existsSync(tempExe)) {
+      const tempExe = path.join(os.tmpdir(), "MediaIslandCore_v131.exe");
+      if (!fs.existsSync(tempExe) || (fs.existsSync(coreExe) && fs.statSync(tempExe).size !== fs.statSync(coreExe).size)) {
         fs.writeFileSync(tempExe, fs.readFileSync(coreExe));
       }
       coreExe = tempExe;
@@ -140,7 +140,7 @@ function startWatcher(callbacks = {}) {
   };
 
   poll();
-  watcherInterval = setInterval(poll, 2500);
+  watcherInterval = setInterval(poll, 800);
 }
 
 function stopWatcher() {

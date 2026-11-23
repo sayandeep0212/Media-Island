@@ -254,21 +254,33 @@
       source: "mobile"
     };
 
-    // 1. Send via Firebase
+    // 1. Prefer fast, direct local WebSocket if connected (avoids duplicate trigger)
+    if (localWs && localWs.readyState === WebSocket.OPEN) {
+      localWs.send(JSON.stringify({ type: "cmd", ...payload }));
+      return;
+    }
+
+    // 2. Fallback to Firebase cloud relay when not on direct Wi-Fi
     if (db && roomCode) {
       db.ref(`rooms/${roomCode}/command`).set(payload).catch(err => {
         console.error("Firebase sendCommand error:", err);
       });
     }
-
-    // 2. Send via Local WebSocket (if connected)
-    if (localWs && localWs.readyState === WebSocket.OPEN) {
-      localWs.send(JSON.stringify({ type: "cmd", ...payload }));
-    }
   }
 
-  // Attach Media Controls
-  playPauseBtn.addEventListener("click", () => sendCommand("playpause"));
+  // Attach Media Controls with debounce & optimistic UI toggle
+  let lastMobilePpTime = 0;
+  playPauseBtn.addEventListener("click", () => {
+    const now = Date.now();
+    if (now - lastMobilePpTime < 300) return;
+    lastMobilePpTime = now;
+
+    const isPlaying = playPauseBtn.classList.contains("playing");
+    playPauseBtn.classList.toggle("playing", !isPlaying);
+    playPauseBtn.innerHTML = !isPlaying ? ICON_PAUSE : ICON_PLAY;
+
+    sendCommand("playpause");
+  });
   prevBtn.addEventListener("click", () => sendCommand("prev"));
   nextBtn.addEventListener("click", () => sendCommand("next"));
 
@@ -321,24 +333,83 @@
   // Dynamic Island Stickers Studio (stick-it-up pack)
   // ----------------------------------------------------
   let stickerInitRetries = 0;
+  let activeStickerCategory = "all";
+  let stickerSearchQuery = "";
+
+  const stickerSearchInput = document.getElementById("stickerSearchInput");
+  const stickerSearchClear = document.getElementById("stickerSearchClear");
+  const stickerCategoryPills = document.getElementById("stickerCategoryPills");
+  const stickerCountBadge = document.getElementById("stickerCountBadge");
+  const noStickersFound = document.getElementById("noStickersFound");
 
   function getStickersList() {
     return Array.isArray(window.ISLAND_STICKERS) ? window.ISLAND_STICKERS : [];
+  }
+
+  function getFilteredStickers() {
+    let list = getStickersList();
+    if (activeStickerCategory !== "all") {
+      list = list.filter(s => s.category === activeStickerCategory);
+    }
+    if (stickerSearchQuery) {
+      const q = stickerSearchQuery.toLowerCase().trim();
+      list = list.filter(s => 
+        (s.name && s.name.toLowerCase().includes(q)) ||
+        (s.id && s.id.toLowerCase().includes(q)) ||
+        (s.description && s.description.toLowerCase().includes(q)) ||
+        (Array.isArray(s.tags) && s.tags.some(t => t.toLowerCase().includes(q)))
+      );
+    }
+    return list;
+  }
+
+  function renderStickersStudioGrid() {
+    if (!mobileStickerGrid) return;
+    const list = getFilteredStickers();
+
+    if (stickerCountBadge) {
+      const totalCount = getStickersList().length;
+      if (list.length === totalCount) {
+        stickerCountBadge.textContent = `Showing all ${totalCount} stickers`;
+      } else {
+        stickerCountBadge.textContent = `Showing ${list.length} of ${totalCount} stickers`;
+      }
+    }
+
+    if (noStickersFound) {
+      noStickersFound.style.display = list.length === 0 ? "block" : "none";
+    }
+
+    mobileStickerGrid.innerHTML = list.map(s => `
+      <div class="sticker-card ${s.id === currentStickerId ? 'active' : ''}" data-id="${s.id}" role="button" tabindex="0" title="${s.name} Sticker">
+        <span class="sticker-badge">✓</span>
+        <div class="sticker-img-wrap">${s.svg}</div>
+        <span class="sticker-name">${s.name}</span>
+      </div>
+    `).join("");
   }
 
   function initStickersStudio() {
     if (!mobileStickerGrid) return;
     const list = getStickersList();
     if (list.length) {
-      if (!mobileStickerGrid.children.length) {
-        mobileStickerGrid.innerHTML = list.map(s => `
-          <div class="sticker-card" data-id="${s.id}" role="button" tabindex="0" title="${s.name} Sticker">
-            <span class="sticker-badge">✓</span>
-            <div class="sticker-img-wrap">${s.svg}</div>
-            <span class="sticker-name">${s.name}</span>
-          </div>
-        `).join("");
+      renderStickersStudioGrid();
+
+      // Update pill badge counts dynamically from actual data
+      if (stickerCategoryPills) {
+        const counts = { all: list.length };
+        list.forEach(s => {
+          counts[s.category] = (counts[s.category] || 0) + 1;
+        });
+        stickerCategoryPills.querySelectorAll(".category-pill").forEach(pill => {
+          const cat = pill.dataset.category;
+          const countSpan = pill.querySelector(".pill-count");
+          if (countSpan && counts[cat] !== undefined) {
+            countSpan.textContent = counts[cat];
+          }
+        });
       }
+
       if (mobileStickerBox && list[0] && !mobileStickerBox.innerHTML.trim()) {
         mobileStickerBox.innerHTML = list[0].svg;
       }
@@ -367,24 +438,25 @@
     currentStickerId = stickerId;
     if (stickerAutoBtn) stickerAutoBtn.classList.remove("active");
 
-    const card = document.querySelector(`.sticker-card[data-id="${stickerId}"]`);
-    if (card) {
-      const nameEl = card.querySelector(".sticker-name");
-      if (activeStickerLabel && nameEl) activeStickerLabel.textContent = nameEl.textContent;
-      const svgEl = card.querySelector(".sticker-img-wrap");
-      if (mobileStickerBox && svgEl) {
-        mobileStickerBox.innerHTML = svgEl.innerHTML;
+    const list = getStickersList();
+    const found = list.find(s => s.id === stickerId);
+
+    if (found) {
+      if (activeStickerLabel) activeStickerLabel.textContent = found.name;
+      if (mobileStickerBox) {
+        mobileStickerBox.innerHTML = found.svg;
         mobileStickerBox.classList.remove("slap");
         void mobileStickerBox.offsetWidth;
         mobileStickerBox.classList.add("slap");
       }
     } else {
-      const list = getStickersList();
-      const found = list.find(s => s.id === stickerId);
-      if (found) {
-        if (activeStickerLabel) activeStickerLabel.textContent = found.name;
-        if (mobileStickerBox) {
-          mobileStickerBox.innerHTML = found.svg;
+      const card = document.querySelector(`.sticker-card[data-id="${stickerId}"]`);
+      if (card) {
+        const nameEl = card.querySelector(".sticker-name");
+        if (activeStickerLabel && nameEl) activeStickerLabel.textContent = nameEl.textContent;
+        const svgEl = card.querySelector(".sticker-img-wrap");
+        if (mobileStickerBox && svgEl) {
+          mobileStickerBox.innerHTML = svgEl.innerHTML;
           mobileStickerBox.classList.remove("slap");
           void mobileStickerBox.offsetWidth;
           mobileStickerBox.classList.add("slap");
@@ -410,6 +482,45 @@
         }).catch(() => {});
       }
     }
+  }
+
+  // Category Pills Filtering
+  if (stickerCategoryPills) {
+    stickerCategoryPills.addEventListener("click", e => {
+      const pill = e.target.closest(".category-pill");
+      if (!pill) return;
+      const cat = pill.dataset.category;
+      if (!cat || cat === activeStickerCategory) return;
+
+      activeStickerCategory = cat;
+      stickerCategoryPills.querySelectorAll(".category-pill").forEach(p => {
+        p.classList.toggle("active", p === pill);
+      });
+      renderStickersStudioGrid();
+    });
+  }
+
+  // Search Input Filtering
+  if (stickerSearchInput) {
+    stickerSearchInput.addEventListener("input", () => {
+      stickerSearchQuery = stickerSearchInput.value;
+      if (stickerSearchClear) {
+        stickerSearchClear.style.display = stickerSearchQuery ? "grid" : "none";
+      }
+      renderStickersStudioGrid();
+    });
+  }
+
+  if (stickerSearchClear) {
+    stickerSearchClear.addEventListener("click", () => {
+      stickerSearchQuery = "";
+      if (stickerSearchInput) {
+        stickerSearchInput.value = "";
+        stickerSearchInput.focus();
+      }
+      stickerSearchClear.style.display = "none";
+      renderStickersStudioGrid();
+    });
   }
 
   if (mobileStickerGrid) {
@@ -439,12 +550,13 @@
 
   if (stickerRandomBtn) {
     stickerRandomBtn.addEventListener("click", () => {
-      const cards = Array.from(document.querySelectorAll(".sticker-card"));
-      if (cards.length) {
-        const pool = cards.filter(c => c.dataset.id !== currentStickerId);
-        const chosen = (pool.length ? pool : cards)[Math.floor(Math.random() * (pool.length || cards.length))];
-        if (chosen && chosen.dataset.id) {
-          chooseSticker(chosen.dataset.id, true);
+      const list = getFilteredStickers();
+      const pool = list.length ? list : getStickersList();
+      if (pool.length) {
+        const remaining = pool.filter(c => c.id !== currentStickerId);
+        const chosen = (remaining.length ? remaining : pool)[Math.floor(Math.random() * (remaining.length || pool.length))];
+        if (chosen && chosen.id) {
+          chooseSticker(chosen.id, true);
         }
       }
     });

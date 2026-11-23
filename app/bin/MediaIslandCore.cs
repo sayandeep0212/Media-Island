@@ -42,6 +42,15 @@ namespace MediaIslandCore {
     class Program {
         [DllImport("user32.dll")]
         public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+        [DllImport("user32.dll", SetLastError = true)]
+        static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
+        const uint WM_APPCOMMAND = 0x0319;
+        const int APPCOMMAND_MEDIA_PLAY_PAUSE = 14;
+        const int APPCOMMAND_MEDIA_NEXTTRACK = 11;
+        const int APPCOMMAND_MEDIA_PREVIOUSTRACK = 12;
+        const int APPCOMMAND_MEDIA_STOP = 13;
+
         public const byte VK_MEDIA_NEXT_TRACK = 0xB0;
         public const byte VK_MEDIA_PREV_TRACK = 0xB1;
         public const byte VK_MEDIA_STOP = 0xB2;
@@ -49,11 +58,38 @@ namespace MediaIslandCore {
         public const byte VK_VOLUME_MUTE = 0xAD;
         public const byte VK_VOLUME_DOWN = 0xAE;
         public const byte VK_VOLUME_UP = 0xAF;
+        public const uint KEYEVENTF_EXTENDEDKEY = 0x0001;
         public const uint KEYEVENTF_KEYUP = 0x0002;
 
         public static void PressKey(byte key) {
-            keybd_event(key, 0, 0, UIntPtr.Zero);
-            keybd_event(key, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+            keybd_event(key, 0, KEYEVENTF_EXTENDEDKEY, UIntPtr.Zero);
+            keybd_event(key, 0, KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP, UIntPtr.Zero);
+        }
+
+        static bool SendSpotifyAppCommand(int appCommand) {
+            bool sent = false;
+            try {
+                EnumWindows((hWnd, lParam) => {
+                    if (!IsWindowVisible(hWnd)) return true;
+                    uint pid;
+                    GetWindowThreadProcessId(hWnd, out pid);
+                    try {
+                        var proc = Process.GetProcessById((int)pid);
+                        if (proc.ProcessName.ToLower().Contains("spotify")) {
+                            StringBuilder sb = new StringBuilder(512);
+                            GetWindowText(hWnd, sb, 512);
+                            string t = sb.ToString();
+                            if (!string.IsNullOrWhiteSpace(t)) {
+                                SendMessage(hWnd, WM_APPCOMMAND, IntPtr.Zero, (IntPtr)(appCommand << 16));
+                                sent = true;
+                                return false;
+                            }
+                        }
+                    } catch {}
+                    return true;
+                }, IntPtr.Zero);
+            } catch {}
+            return sent;
         }
 
         static IAudioEndpointVolume GetVolumeController() {
@@ -203,11 +239,23 @@ namespace MediaIslandCore {
                 }
             } else if (cmd == "media" && args.Length > 1) {
                 string action = args[1].ToLower();
-                if (action == "playpause" || action == "toggle") PressKey(VK_MEDIA_PLAY_PAUSE);
-                else if (action == "next") PressKey(VK_MEDIA_NEXT_TRACK);
-                else if (action == "prev" || action == "previous") PressKey(VK_MEDIA_PREV_TRACK);
-                else if (action == "stop") PressKey(VK_MEDIA_STOP);
-                else if (action == "volup") PressKey(VK_VOLUME_UP);
+                if (action == "playpause" || action == "toggle") {
+                    if (!SendSpotifyAppCommand(APPCOMMAND_MEDIA_PLAY_PAUSE)) {
+                        PressKey(VK_MEDIA_PLAY_PAUSE);
+                    }
+                } else if (action == "next") {
+                    if (!SendSpotifyAppCommand(APPCOMMAND_MEDIA_NEXTTRACK)) {
+                        PressKey(VK_MEDIA_NEXT_TRACK);
+                    }
+                } else if (action == "prev" || action == "previous") {
+                    if (!SendSpotifyAppCommand(APPCOMMAND_MEDIA_PREVIOUSTRACK)) {
+                        PressKey(VK_MEDIA_PREV_TRACK);
+                    }
+                } else if (action == "stop") {
+                    if (!SendSpotifyAppCommand(APPCOMMAND_MEDIA_STOP)) {
+                        PressKey(VK_MEDIA_STOP);
+                    }
+                } else if (action == "volup") PressKey(VK_VOLUME_UP);
                 else if (action == "voldown") PressKey(VK_VOLUME_DOWN);
                 else if (action == "mute") PressKey(VK_VOLUME_MUTE);
                 Console.WriteLine("OK");
