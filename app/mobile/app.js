@@ -25,6 +25,38 @@
   // Elements
   const statusBadge = $("statusBadge");
   const statusText = $("statusText");
+
+  // Device-level room exclusivity
+  let deviceId = "";
+  try {
+    deviceId = localStorage.getItem("media_island_device_id");
+    if (!deviceId) {
+      deviceId = "dev_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 9);
+      localStorage.setItem("media_island_device_id", deviceId);
+    }
+  } catch {
+    deviceId = "dev_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 9);
+  }
+  let isRoomBlockedByAnotherDevice = false;
+  let deviceHeartbeatTimer = null;
+  let activeDeviceRef = null;
+  const roomLockedNotice = $("roomLockedNotice");
+  const roomLockedDesc = $("roomLockedDesc");
+
+  function showRoomLockedBanner(deviceName) {
+    if (roomLockedNotice) {
+      if (roomLockedDesc) {
+        roomLockedDesc.textContent = `${deviceName} is currently connected to room "${roomCode}". Only one device can be connected at a time. To connect, disconnect the other device or change the room code on your desktop Media Island.`;
+      }
+      roomLockedNotice.style.display = "flex";
+    }
+    if (islandPill) islandPill.style.opacity = "0.45";
+  }
+
+  function hideRoomLockedBanner() {
+    if (roomLockedNotice) roomLockedNotice.style.display = "none";
+    if (islandPill) islandPill.style.opacity = "1";
+  }
   const activeRoomDisplay = $("activeRoomDisplay");
   const roomIndicator = $("roomIndicator");
   const roomDot = $("roomDot");
@@ -245,6 +277,10 @@
 
   // Send Command to Desktop
   function sendCommand(cmd, value = null) {
+    if (isRoomBlockedByAnotherDevice) {
+      showToast("Room is locked by another phone. Disconnect it or change room code on desktop.");
+      return;
+    }
     vibrate(20);
     const payload = {
       cmd,
@@ -810,6 +846,54 @@
           firebase.initializeApp(firebaseConfig);
         }
         db = firebase.database();
+
+        // Device exclusivity lock: Only 1 device per room
+        if (deviceHeartbeatTimer) {
+          clearInterval(deviceHeartbeatTimer);
+          deviceHeartbeatTimer = null;
+        }
+        if (activeDeviceRef) {
+          activeDeviceRef.off();
+        }
+        activeDeviceRef = db.ref(`rooms/${roomCode}/activeDevice`);
+        activeDeviceRef.on("value", snapshot => {
+          const dev = snapshot.val();
+          const now = Date.now();
+          const isAnotherDevice = !!(dev && dev.online && dev.deviceId && dev.deviceId !== deviceId && (now - (dev.updatedAt || 0) < 30000));
+
+          if (isAnotherDevice) {
+            isRoomBlockedByAnotherDevice = true;
+            setStatus("error", "Room Locked");
+            showRoomLockedBanner(dev.deviceName || "Another phone");
+            return;
+          }
+
+          // If room is free or owned by this device:
+          isRoomBlockedByAnotherDevice = false;
+          hideRoomLockedBanner();
+
+          // Claim room
+          activeDeviceRef.update({
+            deviceId: deviceId,
+            deviceName: /iPhone|iPad|iPod/i.test(navigator.userAgent) ? "iPhone" : (/Android/i.test(navigator.userAgent) ? "Android Phone" : "Mobile Remote"),
+            online: true,
+            updatedAt: Date.now()
+          }).catch(() => {});
+
+          activeDeviceRef.onDisconnect().update({
+            online: false,
+            updatedAt: Date.now()
+          });
+        });
+
+        deviceHeartbeatTimer = setInterval(() => {
+          if (!isRoomBlockedByAnotherDevice && db && roomCode && activeDeviceRef) {
+            activeDeviceRef.update({
+              online: true,
+              updatedAt: Date.now()
+            }).catch(() => {});
+          }
+        }, 10000);
 
         // Listen for desktop online presence
         const desktopRef = db.ref(`rooms/${roomCode}/desktop`);

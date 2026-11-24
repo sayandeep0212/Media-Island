@@ -402,10 +402,17 @@ function updatePowerSave() {
     function createWindow() {
       win = new BrowserWindow({
         width: 266, height: 48,
-        frame: false, transparent: true, resizable: false, hasShadow: false,
-        alwaysOnTop: true, skipTaskbar: true, focusable: false,
+        frame: false,
+        transparent: true,
+        backgroundColor: "#00000000",
+        resizable: false,
+        hasShadow: false,
+        alwaysOnTop: true,
+        skipTaskbar: true,
+        focusable: false,
         webPreferences: { preload: path.join(__dirname, "preload.js") }
       });
+      try { win.setHasShadow(false); } catch {}
       win.setAlwaysOnTop(true, "screen-saver");
       win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
       win.loadFile("index.html");

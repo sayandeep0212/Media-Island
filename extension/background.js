@@ -57,7 +57,7 @@ function connect() {
       const m = JSON.parse(e.data);
       const best = pick();
       if (m.type === "cmd" && best) {
-        chrome.tabs.sendMessage(best.tabId, { type: "cmd", cmd: m.cmd, value: m.value }, { frameId: best.frameId }).catch(() => {});
+        chrome.tabs.sendMessage(best.tabId, { type: "cmd", cmd: m.cmd, value: m.value }).catch(() => {});
       }
     } catch {}
   };
