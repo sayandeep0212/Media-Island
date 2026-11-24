@@ -101,7 +101,10 @@ let settings = {
   ],
   customPosition: null
 };
-let dragOffset;
+let dragOffset = null;
+let dragWorkArea = null;
+let dragWinWidth = 0;
+let dragWinHeight = 0;
 let currentRemoteStatus = { status: "not_configured", message: "Connecting to Firebase..." };
 
 if (!app.requestSingleInstanceLock()) {
@@ -309,7 +312,7 @@ function updatePowerSave() {
       if (settings.glow.sleepBlackout) {
         glowWin.setIgnoreMouseEvents(false);
       } else {
-        glowWin.setIgnoreMouseEvents(true, { forward: true });
+        glowWin.setIgnoreMouseEvents(true);
       }
     } else {
       if (glowWin.isVisible()) {
@@ -346,7 +349,7 @@ function updatePowerSave() {
     });
     glowWin.setAlwaysOnTop(true, "screen-saver");
     glowWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-    glowWin.setIgnoreMouseEvents(true, { forward: true });
+    glowWin.setIgnoreMouseEvents(true);
     glowWin.loadFile("glow.html");
     glowWin.webContents.on("did-finish-load", () => {
       syncGlowVisibility();
@@ -825,14 +828,18 @@ function updatePowerSave() {
       if (phase === "start") {
         const bounds = win.getBounds();
         dragOffset = { x: screenX - bounds.x, y: screenY - bounds.y };
-      } else if (phase === "move" && dragOffset) {
+        dragWinWidth = bounds.width;
+        dragWinHeight = bounds.height;
         const display = screen.getDisplayNearestPoint({ x: screenX, y: screenY });
-        const { x, y, width, height } = display.workArea;
-        const nextX = Math.min(x + width - win.getBounds().width, Math.max(x, screenX - dragOffset.x));
-        const nextY = Math.min(y + height - win.getBounds().height, Math.max(y, screenY - dragOffset.y));
+        dragWorkArea = display ? display.workArea : screen.getPrimaryDisplay().workArea;
+      } else if (phase === "move" && dragOffset && dragWorkArea) {
+        const { x, y, width, height } = dragWorkArea;
+        const nextX = Math.min(x + width - dragWinWidth, Math.max(x, screenX - dragOffset.x));
+        const nextY = Math.min(y + height - dragWinHeight, Math.max(y, screenY - dragOffset.y));
         win.setPosition(Math.round(nextX), Math.round(nextY));
       } else if (phase === "end") {
         dragOffset = null;
+        dragWorkArea = null;
         const currentBounds = win.getBounds();
         const primary = screen.getPrimaryDisplay();
         const primaryCenterX = primary.bounds.x + primary.bounds.width / 2;

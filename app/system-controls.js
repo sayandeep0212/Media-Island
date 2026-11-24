@@ -140,7 +140,7 @@ function startWatcher(callbacks = {}) {
   };
 
   poll();
-  watcherInterval = setInterval(poll, 800);
+  watcherInterval = setInterval(poll, 1200);
 }
 
 function stopWatcher() {

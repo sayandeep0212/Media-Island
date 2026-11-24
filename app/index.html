@@ -46,19 +46,22 @@
     align-items: center;
     padding: 5px 12px 5px 6px;
     color: var(--text-main);
-    transform: scale(1);
+    transform: translateZ(0);
     opacity: 1;
     transform-origin: top center;
     cursor: grab;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
     will-change: width, height, border-radius;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    contain: layout style;
     transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1),
                 height 0.3s cubic-bezier(0.16, 1, 0.3, 1),
                 border-radius 0.3s cubic-bezier(0.16, 1, 0.3, 1),
                 padding 0.28s ease;
   }
 
-  #pill.dragging { cursor: grabbing; }
+  #pill.dragging { cursor: grabbing !important; }
 
   /* Expanded Mac Dynamic Island */
   #pill.open {
@@ -71,6 +74,7 @@
     background: #000000;
     border: 1px solid rgba(255, 255, 255, 0.14);
     box-shadow: 0 8px 28px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.08);
+    cursor: default;
   }
 
   /* Topline / Collapsed Header */
@@ -86,6 +90,7 @@
     min-height: 34px;
     padding-bottom: 8px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    cursor: grab;
   }
 
   /* Collapsed Header Elements */
@@ -1135,12 +1140,14 @@
     $("remaining").textContent = `-${formatTime(Math.max(0, duration - current))}`;
   });
 
-  // --- Expansion & Stability Management (Fixes cursor lag & indecision) ---
+  // --- Expansion & Stability Management (Fixes cursor lag & jitter) ---
   let isExpanded = false;
   let isPinned = false;
   let leaveTimer = null;
+  let enterTimer = null;
 
   function expandIsland() {
+    clearTimeout(enterTimer);
     clearTimeout(leaveTimer);
     if (isExpanded) return;
     isExpanded = true;
@@ -1149,6 +1156,7 @@
   }
 
   function collapseIsland(force = false) {
+    clearTimeout(enterTimer);
     if (!isExpanded) return;
     if (isPinned && !force) return;
     isExpanded = false;
@@ -1163,18 +1171,25 @@
 
   pill.addEventListener("mouseenter", () => {
     clearTimeout(leaveTimer);
-    expandIsland();
+    clearTimeout(enterTimer);
+    if (isExpanded) return;
+    // 60ms natural hover intent delay prevents accidental OS window resizing on fast cursor sweeps
+    enterTimer = setTimeout(() => {
+      expandIsland();
+    }, 60);
   });
 
   pill.addEventListener("mouseleave", () => {
+    clearTimeout(enterTimer);
     if (dragging || isPinned) return;
     clearTimeout(leaveTimer);
     leaveTimer = setTimeout(() => {
       collapseIsland();
-    }, 240);
+    }, 320);
   });
 
   pill.addEventListener("click", e => {
+    clearTimeout(enterTimer);
     if (!isExpanded) {
       expandIsland();
     }
@@ -1184,21 +1199,42 @@
     }
   });
 
+  // --- Smooth 60fps/144fps Dragging without IPC flooding ---
+  let dragRafId = null;
+  let latestDragX = 0;
+  let latestDragY = 0;
+
   pill.addEventListener("pointerdown", event => {
     if (event.target.closest("button, input, #sticker-box, .dock-item, .tab-item")) return;
     dragging = true;
+    latestDragX = event.screenX;
+    latestDragY = event.screenY;
     pill.classList.add("dragging");
     pill.setPointerCapture(event.pointerId);
     window.island.drag("start", event.screenX, event.screenY);
   });
 
   pill.addEventListener("pointermove", event => {
-    if (dragging) window.island.drag("move", event.screenX, event.screenY);
+    if (!dragging) return;
+    latestDragX = event.screenX;
+    latestDragY = event.screenY;
+    if (!dragRafId) {
+      dragRafId = requestAnimationFrame(() => {
+        dragRafId = null;
+        if (dragging) {
+          window.island.drag("move", latestDragX, latestDragY);
+        }
+      });
+    }
   });
 
   const endDrag = event => {
     if (!dragging) return;
     dragging = false;
+    if (dragRafId) {
+      cancelAnimationFrame(dragRafId);
+      dragRafId = null;
+    }
     pill.classList.remove("dragging");
     window.island.drag("end", event.screenX, event.screenY);
   };
